@@ -1,0 +1,6 @@
+parametersSchema:
+	phpstanHub: structure([
+		hostProjectRoot: schema(string(), nullable())
+	])
+
+

@@ -1,0 +1,16 @@
+composer.lock
+vendor
+node_modules
+.DS_Store
+.git
+.idea
+.vscode
+*.cache
+*.tmp
+*.bak
+*.swp
+*.old
+*.zip
+*.tar.gz
+*.rar
+*.7z

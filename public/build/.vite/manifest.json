@@ -1,0 +1,11 @@
+{
+  "assets/js/app.js": {
+    "file": "assets/main-BUFK7Ulc.js",
+    "name": "main",
+    "src": "assets/js/app.js",
+    "isEntry": true,
+    "css": [
+      "assets/main-DBVG18Vu.css"
+    ]
+  }
+}

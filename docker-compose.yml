@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+    phpstan-hub:
+        build:
+            context: .
+            dockerfile: .docker/Dockerfile
+        volumes:
+            # Mount the current project directory inside the container
+            - .:/app
+            # Mount the .Xauthority file to allow access to your host's X server
+            # This is necessary for desktop notifications
+            - ~/.Xauthority:/root/.Xauthority:ro
+        environment:
+            # Pass the DISPLAY environment variable from your host to the container
+            # This allows the container to know where to send graphical notifications
+            - DISPLAY=${DISPLAY}
+        # Use host network mode to allow the container to directly access
+        # your host's X server and receive notifications
+        network_mode: host
+        # Command to start the PHPUnit Hub server
+        # You can add --watch to enable automatic test re-runs
+        command: bin/phpstan-hub #--watch
+        # If you want to keep the container running for debugging or to view logs
+        # stdin_open: true
+        # tty: true

@@ -1,0 +1,11 @@
+includes:
+	- extension.neon
+parameters:
+	level: 6
+	paths:
+		- src
+
+	editorUrl: 'phpstorm://open?file=%%file%%&line=%%line%%'
+	phpstanHub:
+		hostProjectRoot: /home/carelle/workspace/PhpStanHub
+
