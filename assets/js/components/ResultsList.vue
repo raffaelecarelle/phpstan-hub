@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import Copyable from './Copyable.vue';
 
 const props = defineProps({
@@ -11,6 +11,17 @@ const props = defineProps({
     hostProjectRoot: String,
 });
 
+const localResults = ref(null);
+
+watch(() => props.results, (newResults) => {
+    if (newResults) {
+        localResults.value = JSON.parse(JSON.stringify(newResults));
+    } else {
+        localResults.value = null;
+    }
+}, { immediate: true, deep: true });
+
+
 const collapsedFiles = ref({});
 
 const toggleFile = (fileName) => {
@@ -18,11 +29,11 @@ const toggleFile = (fileName) => {
 };
 
 const hasErrors = computed(() => {
-    if (!props.results) return false;
-    return (props.results.totals.errors > 0) || (props.results.totals.file_errors > 0);
+    if (!localResults.value) return false;
+    return (localResults.value.totals.errors > 0) || (localResults.value.totals.file_errors > 0);
 });
 
-const filesWithErrors = computed(() => props.results ? props.results.files : {});
+const filesWithErrors = computed(() => localResults.value ? localResults.value.files : {});
 
 const getRelativePath = (filePath) => {
     if (!props.projectRoot || !filePath.startsWith(props.projectRoot)) {
@@ -32,12 +43,12 @@ const getRelativePath = (filePath) => {
 };
 
 const individualErrors = computed(() => {
-    if (!props.results || !props.results.files) {
+    if (!localResults.value || !localResults.value.files) {
         return [];
     }
     const allErrors = [];
-    for (const fileName in props.results.files) {
-        for (const message of props.results.files[fileName].messages) {
+    for (const fileName in localResults.value.files) {
+        for (const message of localResults.value.files[fileName].messages) {
             allErrors.push({
                 ...message,
                 file: fileName,
@@ -65,11 +76,32 @@ const getFileLink = (filePath, line) => {
 
 const ignoreError = async (errorMessage, filePath) => {
     try {
-        await fetch('http://127.0.0.1:8081/api/ignore-error', {
+        const response = await fetch('http://127.0.0.1:8081/api/ignore-error', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ error: errorMessage, file: filePath }),
         });
+
+        if (response.ok && localResults.value) {
+            const fileInResults = localResults.value.files[filePath];
+            if (fileInResults) {
+                const errorIndex = fileInResults.messages.findIndex(msg => msg.message === errorMessage);
+                if (errorIndex !== -1) {
+                    fileInResults.messages.splice(errorIndex, 1);
+                    if (fileInResults.errors > 0) {
+                        fileInResults.errors--;
+                    }
+
+                    if (localResults.value.totals.file_errors > 0) {
+                        localResults.value.totals.file_errors--;
+                    }
+
+                    if (fileInResults.messages.length === 0) {
+                        delete localResults.value.files[filePath];
+                    }
+                }
+            }
+        }
     } catch (error) {
         console.error('Error ignoring error:', error);
     }
@@ -173,8 +205,8 @@ const randomSuccessMessage = () => {
                         <span class="text-xs font-medium text-gray-400 uppercase tracking-wider w-20 text-center">Action</span>
                     </h3>
                     <table v-if="!collapsedFiles[fileName]" class="min-w-full">
-                        <tbody class="divide-y divide-gray-700">
-                        <tr v-for="(error, index) in file.messages" :key="index" class="hover:bg-gray-750 transition-colors duration-150">
+                        <transition-group tag="tbody" name="fade" class="divide-y divide-gray-700">
+                        <tr v-for="(error) in file.messages" :key="error.message" class="hover:bg-gray-750 transition-colors duration-150">
                             <td class="pl-4 pr-2 py-3 whitespace-nowrap text-right align-top w-20">
                                 <a :href="getFileLink(fileName, error.line)" class="font-mono text-sm text-gray-500 hover:underline hover:text-blue-400">L{{ error.line }}</a>
                             </td>
@@ -197,7 +229,7 @@ const randomSuccessMessage = () => {
                                 </button>
                             </td>
                         </tr>
-                        </tbody>
+                        </transition-group>
                     </table>
                 </div>
             </div>
@@ -214,8 +246,8 @@ const randomSuccessMessage = () => {
                         <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">Actions</th>
                     </tr>
                     </thead>
-                    <tbody class="divide-y divide-gray-700">
-                    <tr v-for="(error, index) in individualErrors" :key="index" class="hover:bg-gray-750 transition-colors duration-150">
+                    <transition-group tag="tbody" name="fade" class="divide-y divide-gray-700">
+                    <tr v-for="(error) in individualErrors" :key="`${error.file}:${error.line}:${error.message}`" class="hover:bg-gray-750 transition-colors duration-150">
                         <td class="px-6 py-4 whitespace-nowrap">
                             <Copyable :text="error.relativeFile">
                                 <a :href="getFileLink(error.file, error.line)" class="text-sm text-gray-300 hover:underline hover:text-blue-400">{{ error.relativeFile }}</a>
@@ -243,7 +275,7 @@ const randomSuccessMessage = () => {
                             </button>
                         </td>
                     </tr>
-                    </tbody>
+                    </transition-group>
                 </table>
             </div>
         </div>
@@ -252,3 +284,12 @@ const randomSuccessMessage = () => {
         </div>
     </div>
 </template>
+
+<style>
+.fade-leave-active {
+    transition: opacity 0.5s;
+}
+.fade-leave-to {
+    opacity: 0;
+}
+</style>
