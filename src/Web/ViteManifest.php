@@ -11,14 +11,15 @@ class ViteManifest
     public function __construct(private readonly string $manifestPath)
     {
         if (is_file($this->manifestPath)) {
-            $this->manifest = json_decode(file_get_contents($this->manifestPath), true);
+            $decoded = json_decode(file_get_contents($this->manifestPath), true);
+            $this->manifest = is_array($decoded) ? $decoded : [];
         }
     }
 
     public function getScript(): string
     {
         $entry = $this->manifest['assets/js/app.js'] ?? null;
-        return $entry ? sprintf('<script type="module" src="/build/%s"></script>', $entry['file']) : '';
+        return ($entry && isset($entry['file'])) ? sprintf('<script type="module" src="/build/%s"></script>', $entry['file']) : '';
     }
 
     public function getStyles(): string

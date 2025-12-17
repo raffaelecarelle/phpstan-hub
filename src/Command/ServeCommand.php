@@ -230,7 +230,9 @@ class ServeCommand extends Command
                 if (isset($composerData['autoload']['psr-4'])) {
                     foreach ($composerData['autoload']['psr-4'] as $namespace => $path) {
                         if (is_array($path)) {
-                            $paths = array_merge($paths, $path);
+                            foreach ($path as $p) {
+                                $paths[] = rtrim($p, '/');
+                            }
                         } else {
                             $paths[] = rtrim($path, '/');
                         }
@@ -241,7 +243,9 @@ class ServeCommand extends Command
                 if (isset($composerData['autoload-dev']['psr-4'])) {
                     foreach ($composerData['autoload-dev']['psr-4'] as $namespace => $path) {
                         if (is_array($path)) {
-                            $paths = array_merge($paths, $path);
+                            foreach ($path as $p) {
+                                $paths[] = rtrim($p, '/');
+                            }
                         } else {
                             $paths[] = rtrim($path, '/');
                         }
@@ -303,8 +307,14 @@ class ServeCommand extends Command
     private function addErrorToPhpStanConfig(string $projectRoot, string $error, string $file): void
     {
         $neonPath = $projectRoot . '/phpstan.neon';
+
+        // Se phpstan.neon non esiste, controlla phpstan.neon.dist
         if (!file_exists($neonPath)) {
-            $neonPath = $projectRoot . '/phpstan.neon.dist';
+            $distPath = $projectRoot . '/phpstan.neon.dist';
+            if (file_exists($distPath)) {
+                $neonPath = $distPath;
+            }
+            // Se nessuno esiste, neonPath rimane phpstan.neon e verrà creato
         }
 
         $data = [];
