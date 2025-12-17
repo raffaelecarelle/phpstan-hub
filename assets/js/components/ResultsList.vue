@@ -1,5 +1,5 @@
 <script setup>
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import Copyable from './Copyable.vue';
 
 const props = defineProps({
@@ -10,6 +10,12 @@ const props = defineProps({
     projectRoot: String,
     hostProjectRoot: String,
 });
+
+const collapsedFiles = ref({});
+
+const toggleFile = (fileName) => {
+    collapsedFiles.value[fileName] = !collapsedFiles.value[fileName];
+};
 
 const hasErrors = computed(() => {
     if (!props.results) return false;
@@ -154,44 +160,43 @@ const randomSuccessMessage = () => {
             <!-- Grouped View -->
             <div v-if="viewMode === 'grouped'">
                 <div v-for="(file, fileName) in filesWithErrors" :key="fileName" class="border-b border-gray-700 last:border-b-0">
-                    <h3 class="text-lg font-semibold text-gray-200 p-4 bg-gray-750 border-b border-gray-700">
-                        <Copyable :text="getRelativePath(fileName)">
-                            <a :href="getFileLink(fileName)" class="hover:underline hover:text-blue-400">{{ getRelativePath(fileName) }}</a>
-                        </Copyable>
-                        <span class="ml-2 text-sm font-normal text-gray-500">({{ file.messages.length }} errors)</span>
+                    <h3 @click="toggleFile(fileName)" class="flex justify-between items-center text-lg font-semibold text-gray-200 p-4 bg-gray-750 border-b border-gray-700 cursor-pointer">
+                        <div class="flex items-center">
+                            <svg class="w-5 h-5 mr-2 text-gray-400 transform transition-transform" :class="{ 'rotate-90': !collapsedFiles[fileName] }" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                            <span>
+                                <Copyable :text="getRelativePath(fileName)">
+                                    <a :href="getFileLink(fileName)" class="hover:underline hover:text-blue-400">{{ getRelativePath(fileName) }}</a>
+                                </Copyable>
+                                <span class="ml-2 text-sm font-normal text-gray-500">({{ file.messages.length }} errors)</span>
+                            </span>
+                        </div>
+                        <span class="text-xs font-medium text-gray-400 uppercase tracking-wider w-20 text-center">Action</span>
                     </h3>
-                    <table class="min-w-full">
-                        <thead>
-                            <tr class="border-b border-gray-700">
-                                <th scope="col" class="py-2 pl-4 pr-2 text-right text-xs font-medium text-gray-400 uppercase tracking-wider w-20">Line</th>
-                                <th scope="col" class="py-2 px-2 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Message</th>
-                                <th scope="col" class="py-2 pl-2 pr-4 text-center text-xs font-medium text-gray-400 uppercase tracking-wider w-24">Action</th>
-                            </tr>
-                        </thead>
+                    <table v-if="!collapsedFiles[fileName]" class="min-w-full">
                         <tbody class="divide-y divide-gray-700">
-                            <tr v-for="(error, index) in file.messages" :key="index" class="hover:bg-gray-750 transition-colors duration-150">
-                                <td class="pl-4 pr-2 py-3 whitespace-nowrap text-right align-top">
-                                    <a :href="getFileLink(fileName, error.line)" class="font-mono text-sm text-gray-500 hover:underline hover:text-blue-400">L{{ error.line }}</a>
-                                </td>
-                                <td class="px-2 py-3">
-                                    <Copyable :text="error.message">
-                                        <p class="text-gray-300">{{ error.message }}</p>
-                                    </Copyable>
-                                    <div v-if="error.tip" class="mt-2 pl-4 border-l-2 border-blue-600">
-                                        <p class="text-sm text-blue-400">💡 Tip: <a :href="error.tip" target="_blank" rel="noopener noreferrer" class="underline">{{ error.tip }}</a></p>
-                                    </div>
-                                    <div v-if="error.identifier" class="mt-2">
-                                        <a :href="`https://phpstan.org/error-identifiers/${error.identifier}`" target="_blank" rel="noopener noreferrer" class="inline-block bg-gray-600 text-gray-300 text-xs font-mono px-2 py-1 rounded-full hover:bg-gray-500 transition-colors" title="View on phpstan.org">
-                                            {{ error.identifier }}
-                                        </a>
-                                    </div>
-                                </td>
-                                <td class="pl-2 pr-4 py-3 whitespace-nowrap text-center align-top">
-                                    <button @click="ignoreError(error.message, fileName)" class="bg-gray-600 text-gray-300 text-xs font-mono px-2 py-1 rounded-full hover:bg-gray-500 transition-colors" title="Ignore this error">
-                                        Ignore
-                                    </button>
-                                </td>
-                            </tr>
+                        <tr v-for="(error, index) in file.messages" :key="index" class="hover:bg-gray-750 transition-colors duration-150">
+                            <td class="pl-4 pr-2 py-3 whitespace-nowrap text-right align-top w-20">
+                                <a :href="getFileLink(fileName, error.line)" class="font-mono text-sm text-gray-500 hover:underline hover:text-blue-400">L{{ error.line }}</a>
+                            </td>
+                            <td class="px-2 py-3 align-top">
+                                <Copyable :text="error.message">
+                                    <p class="text-gray-300">{{ error.message }}</p>
+                                </Copyable>
+                                <div v-if="error.tip" class="mt-2 pl-4 border-l-2 border-blue-600">
+                                    <p class="text-sm text-blue-400">💡 Tip: <a :href="error.tip" target="_blank" rel="noopener noreferrer" class="underline">{{ error.tip }}</a></p>
+                                </div>
+                                <div v-if="error.identifier" class="mt-2">
+                                    <a :href="`https://phpstan.org/error-identifiers/${error.identifier}`" target="_blank" rel="noopener noreferrer" class="inline-block bg-gray-600 text-gray-300 text-xs font-mono px-2 py-1 rounded-full hover:bg-gray-500 transition-colors" title="View on phpstan.org">
+                                        {{ error.identifier }}
+                                    </a>
+                                </div>
+                            </td>
+                            <td class="pl-2 pr-4 py-3 whitespace-nowrap text-center align-top w-24">
+                                <button @click="ignoreError(error.message, fileName)" class="bg-gray-600 text-gray-300 text-xs font-mono px-2 py-1 rounded-full hover:bg-gray-500 transition-colors" title="Ignore this error">
+                                    Ignore
+                                </button>
+                            </td>
+                        </tr>
                         </tbody>
                     </table>
                 </div>
