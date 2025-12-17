@@ -11,6 +11,19 @@ const props = defineProps({
     hostProjectRoot: String,
 });
 
+const identifierColorCache = ref({});
+
+const getIdentifierBackgroundColor = (identifier) => {
+    if (!identifier) return {};
+    if (!identifierColorCache.value[identifier]) {
+        const r = Math.floor(Math.random() * 150);
+        const g = Math.floor(Math.random() * 150);
+        const b = Math.floor(Math.random() * 150);
+        identifierColorCache.value[identifier] = `rgb(${r}, ${g}, ${b})`;
+    }
+    return { backgroundColor: identifierColorCache.value[identifier] };
+};
+
 const localResults = ref(null);
 
 watch(() => props.results, (newResults) => {
@@ -198,7 +211,7 @@ const randomSuccessMessage = () => {
                             <span>
                                 <Copyable :text="getRelativePath(fileName)">
                                     <a :href="getFileLink(fileName)" class="hover:underline hover:text-blue-400">{{ getRelativePath(fileName) }}</a>
-                                </Copyable>
+                                 </Copyable>
                                 <span class="ml-2 text-sm font-normal text-gray-500">({{ file.messages.length }} errors)</span>
                             </span>
                         </div>
@@ -218,7 +231,7 @@ const randomSuccessMessage = () => {
                                     <p class="text-sm text-blue-400">💡 Tip: <a :href="error.tip" target="_blank" rel="noopener noreferrer" class="underline">{{ error.tip }}</a></p>
                                 </div>
                                 <div v-if="error.identifier" class="mt-2">
-                                    <a :href="`https://phpstan.org/error-identifiers/${error.identifier}`" target="_blank" rel="noopener noreferrer" class="inline-block bg-gray-600 text-gray-300 text-xs font-mono px-2 py-1 rounded-full hover:bg-gray-500 transition-colors" title="View on phpstan.org">
+                                    <a :href="`https://phpstan.org/error-identifiers/${error.identifier}`" target="_blank" rel="noopener noreferrer" class="inline-block text-gray-300 text-xs font-mono px-2 py-1 rounded-full hover:opacity-80 transition-opacity" title="View on phpstan.org" :style="getIdentifierBackgroundColor(error.identifier)">
                                         {{ error.identifier }}
                                     </a>
                                 </div>
@@ -265,7 +278,7 @@ const randomSuccessMessage = () => {
                             </div>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-right">
-                            <a v-if="error.identifier" :href="`https://phpstan.org/error-identifiers/${error.identifier}`" target="_blank" rel="noopener noreferrer" class="inline-block bg-gray-600 text-gray-300 text-xs font-mono px-2 py-1 rounded-full hover:bg-gray-500 transition-colors" title="View on phpstan.org">
+                            <a v-if="error.identifier" :href="`https://phpstan.org/error-identifiers/${error.identifier}`" target="_blank" rel="noopener noreferrer" class="inline-block text-gray-300 text-xs font-mono px-2 py-1 rounded-full hover:opacity-80 transition-opacity" title="View on phpstan.org" :style="getIdentifierBackgroundColor(error.identifier)">
                                 {{ error.identifier }}
                             </a>
                         </td>
