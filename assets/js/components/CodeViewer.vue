@@ -58,6 +58,7 @@ watch(() => props.filePath, async (newPath, oldPath) => {
         isEditingMode.value = false;
         editedContent.value = '';
         modifiedLines.value = new Set();
+        checkingInProgress.value = false;
     }
 
     try {
@@ -72,14 +73,19 @@ watch(() => props.filePath, async (newPath, oldPath) => {
         }
 
         const data = await response.json();
-        fileContent.value = data.content;
 
-        // Only update editedContent if not in edit mode or if it's a new file
-        if (!isEditingMode.value || isNewFile) {
-            editedContent.value = data.content;
+        // Don't update content if we're in the middle of checking
+        // (the file was just saved and we're waiting for results)
+        if (!checkingInProgress.value) {
+            fileContent.value = data.content;
+
+            // Only update editedContent if not in edit mode or if it's a new file
+            if (!isEditingMode.value || isNewFile) {
+                editedContent.value = data.content;
+            }
+
+            tokens.value = data.tokens || [];
         }
-
-        tokens.value = data.tokens || [];
     } catch (err) {
         error.value = err.message;
         fileContent.value = null;
@@ -88,6 +94,36 @@ watch(() => props.filePath, async (newPath, oldPath) => {
         loading.value = false;
     }
 }, { immediate: true });
+
+// Watch for errors prop changes to stop checking when results update
+watch(() => props.errors, async (newErrors, oldErrors) => {
+    // If checkingInProgress and errors changed, stop the loader
+    if (checkingInProgress.value && newErrors !== oldErrors) {
+        // Now update the content with the saved version
+        if (props.filePath) {
+            try {
+                const response = await fetch('http://127.0.0.1:8081/api/file-content', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ file: props.filePath }),
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    fileContent.value = data.content;
+                    editedContent.value = data.content;
+                    tokens.value = data.tokens || [];
+                }
+            } catch (err) {
+                console.warn('Failed to reload content after check:', err);
+            }
+        }
+
+        // Stop the loader and clear modified lines
+        modifiedLines.value.clear();
+        checkingInProgress.value = false;
+        emit('checking-finished');
+    }
+}, { deep: true });
 
 const lines = computed(() => {
     if (!fileContent.value) return [];
@@ -366,10 +402,14 @@ const handleLineEdit = (lineNumber, newContent) => {
 };
 
 const hasModifiedContent = computed(() => {
+    // Keep showing as modified while checking is in progress
+    if (checkingInProgress.value) return true;
     return editedContent.value !== fileContent.value;
 });
 
 const hasModifiedErrorLine = computed(() => {
+    // Keep showing error line as modified while checking is in progress
+    if (checkingInProgress.value && modifiedLines.value.size > 0) return true;
     return modifiedLines.value.size > 0;
 });
 
@@ -395,24 +435,6 @@ const saveAndCheckErrors = async () => {
             throw new Error(errorData.error || 'Failed to save file');
         }
 
-        // Update original content after successful save
-        fileContent.value = editedContent.value;
-
-        // Re-tokenize the saved content for syntax highlighting
-        try {
-            const tokenResponse = await fetch('http://127.0.0.1:8081/api/file-content', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ file: props.filePath }),
-            });
-            if (tokenResponse.ok) {
-                const data = await tokenResponse.json();
-                tokens.value = data.tokens || [];
-            }
-        } catch (tokenErr) {
-            console.warn('Failed to re-tokenize, keeping old tokens:', tokenErr);
-        }
-
         // Step 2: Trigger PHPStan check
         const checkResponse = await fetch('http://127.0.0.1:8081/api/check-error', {
             method: 'POST',
@@ -424,14 +446,13 @@ const saveAndCheckErrors = async () => {
             throw new Error('Failed to trigger error check');
         }
 
-        // Clear modified lines since we're checking now
-        modifiedLines.value.clear();
-
         // The results will come through WebSocket and update automatically
+        // The loader will stop when errors prop changes (see watcher above)
+        // Content and tokens will be refreshed by the watcher
     } catch (err) {
         console.error('Error saving and checking:', err);
         alert(`Error: ${err.message}`);
-    } finally {
+        // Stop loader on error
         checkingInProgress.value = false;
         emit('checking-finished');
     }
