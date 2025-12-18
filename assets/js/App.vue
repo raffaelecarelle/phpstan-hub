@@ -29,11 +29,23 @@ const connectWebSocket = () => {
     socket.onopen = () => console.log('WebSocket connected');
     socket.onmessage = (event) => {
         try {
-            results.value = JSON.parse(event.data);
+            const data = JSON.parse(event.data);
+
+            // Check if this is a status update (checking started)
+            if (data.status === 'running' || data.status === 'checking') {
+                status.value = 'running';
+                return;
+            }
+
+            // Otherwise, it's analysis results
+            results.value = data;
         } catch (e) {
             console.error('Failed to parse WebSocket data:', e);
         } finally {
-            status.value = 'idle';
+            // Only set to idle if we received actual results
+            if (status.value === 'running') {
+                status.value = 'idle';
+            }
         }
     };
     socket.onclose = () => {

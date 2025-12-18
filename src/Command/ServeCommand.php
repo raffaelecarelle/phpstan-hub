@@ -150,6 +150,67 @@ class ServeCommand extends Command
                     }
                 }
 
+                if ($path === '/api/save-file' && $serverRequest->getMethod() === 'POST') {
+                    try {
+                        $body = (string)$serverRequest->getBody();
+                        $params = json_decode($body, true, 512, JSON_THROW_ON_ERROR);
+                        $file = $params['file'] ?? null;
+                        $content = $params['content'] ?? null;
+
+                        if (!$file || $content === null) {
+                            return new Response(400, ['Content-Type' => 'application/json'], json_encode(['error' => 'File path and content are required']));
+                        }
+
+                        // Security: verify file is within project root
+                        $realPath = realpath(dirname($file)) . '/' . basename($file);
+                        if (!str_starts_with($realPath, $projectRoot)) {
+                            return new Response(403, ['Content-Type' => 'application/json'], json_encode(['error' => 'Access denied']));
+                        }
+
+                        // Verify file exists and is writable
+                        if (!file_exists($realPath) || !is_file($realPath)) {
+                            return new Response(404, ['Content-Type' => 'application/json'], json_encode(['error' => 'File not found']));
+                        }
+
+                        if (!is_writable($realPath)) {
+                            return new Response(403, ['Content-Type' => 'application/json'], json_encode(['error' => 'File is not writable']));
+                        }
+
+                        // Save file
+                        $result = file_put_contents($realPath, $content);
+                        if ($result === false) {
+                            return new Response(500, ['Content-Type' => 'application/json'], json_encode(['error' => 'Failed to save file']));
+                        }
+
+                        return new Response(200, ['Content-Type' => 'application/json'], json_encode(['status' => 'success']));
+                    } catch (Throwable $e) {
+                        return new Response(500, ['Content-Type' => 'application/json'], json_encode(['error' => 'Internal Server Error', 'message' => $e->getMessage()]));
+                    }
+                }
+
+                if ($path === '/api/check-error' && $serverRequest->getMethod() === 'POST') {
+                    try {
+                        // Get current config for paths and level
+                        $config = $this->getPhpStanConfig($projectRoot);
+                        $paths = $config['paths'];
+                        $level = $config['level'];
+
+                        // Ensure level is int
+                        $level = (int) $level;
+
+                        // Convert paths to string
+                        $pathsString = implode(' ', $paths);
+
+                        // Run full analysis
+                        $this->runAnalysis($phpStanRunner, $statusHandler, $loop, $pathsString, $level, $output, false);
+
+                        return new Response(202, ['Content-Type' => 'application/json'], json_encode(['status' => 'checking']));
+                    } catch (Throwable $e) {
+                        $output->writeln(sprintf('<error>Error in /api/check-error: %s</error>', $e->getMessage()));
+                        return new Response(500, ['Content-Type' => 'application/json'], json_encode(['error' => 'Internal Server Error', 'message' => $e->getMessage()]));
+                    }
+                }
+
                 return new Response(404, ['Content-Type' => 'text/plain'], 'Not found');
             }
         );
@@ -265,7 +326,6 @@ class ServeCommand extends Command
      */
     private function getDefaultPaths(string $projectRoot): array
     {
-        // Prima cerca di leggere da composer.json
         $composerPath = $projectRoot . '/composer.json';
         if (file_exists($composerPath)) {
             try {
@@ -274,7 +334,6 @@ class ServeCommand extends Command
 
                 $paths = [];
 
-                // Estrai i path da autoload psr-4
                 if (isset($composerData['autoload']['psr-4'])) {
                     foreach ($composerData['autoload']['psr-4'] as $path) {
                         if (is_array($path)) {
@@ -287,7 +346,6 @@ class ServeCommand extends Command
                     }
                 }
 
-                // Estrai i path da autoload-dev psr-4
                 if (isset($composerData['autoload-dev']['psr-4'])) {
                     foreach ($composerData['autoload-dev']['psr-4'] as $path) {
                         if (is_array($path)) {
@@ -304,11 +362,9 @@ class ServeCommand extends Command
                     return array_values(array_unique($paths));
                 }
             } catch (Exception) {
-                // Ignora errori e usa il fallback
             }
         }
 
-        // Fallback predefinito
         return ['src'];
     }
 

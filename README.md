@@ -7,6 +7,13 @@ The application is powered by a PHP backend using the high-performance [ReactPHP
 ## Features
 
 - **Real-Time Analysis**: Run PHPStan directly from the browser with live results via WebSocket
+- **🆕 Live Code Editing**: Edit your PHP code directly in the browser and verify fixes in real-time
+  - **In-Browser Editor**: Click any line to edit code directly in the Explorer View
+  - **Syntax Highlighting Preserved**: PHP syntax colors remain visible while editing
+  - **One-Click Verification**: Press "Check" to save changes and re-run PHPStan instantly
+  - **Real-Time Error Updates**: See errors disappear immediately when fixed (via WebSocket)
+  - **Smart Visual Feedback**: Modified lines appear in gray, unchanged lines show colored syntax
+  - **No Page Refresh**: All updates happen seamlessly without leaving the page
 - **Advanced Explorer View**:
   - **Tree-based Navigation**: Hierarchical file browser with error count badges
   - **Smart Search**: Full-text search across files with regex support and syntax highlighting
