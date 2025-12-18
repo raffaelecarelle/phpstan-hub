@@ -2,11 +2,12 @@
 import { ref, onMounted, computed } from 'vue';
 import ControlPanel from './components/ControlPanel.vue';
 import ResultsList from './components/ResultsList.vue';
+import ExplorerView from './components/ExplorerView.vue';
 import SettingsDropdown from './components/SettingsDropdown.vue';
 
 const results = ref(null);
 const status = ref('idle'); // idle, running
-const viewMode = ref('grouped'); // grouped, individual
+const viewMode = ref('grouped'); // grouped, individual, explorer
 const config = ref({
     paths: [],
     level: 5,
@@ -114,9 +115,18 @@ onMounted(() => {
         <!-- Main Container -->
         <div class="flex flex-grow overflow-hidden">
             <ResultsList
+                v-if="viewMode === 'grouped' || viewMode === 'individual'"
                 :results="results"
                 :status="status"
                 :view-mode="viewMode"
+                :editor-url="config.editorUrl"
+                :project-root="config.projectRoot"
+                :host-project-root="config.hostProjectRoot"
+            />
+            <ExplorerView
+                v-else-if="viewMode === 'explorer'"
+                :results="results"
+                :status="status"
                 :editor-url="config.editorUrl"
                 :project-root="config.projectRoot"
                 :host-project-root="config.hostProjectRoot"

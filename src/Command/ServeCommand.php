@@ -113,6 +113,33 @@ class ServeCommand extends Command
                     }
                 }
 
+                if ($path === '/api/file-content' && $request->getMethod() === 'POST') {
+                    try {
+                        $body = (string)$request->getBody();
+                        $params = json_decode($body, true, 512, JSON_THROW_ON_ERROR);
+                        $file = $params['file'] ?? null;
+
+                        if (!$file) {
+                            return new Response(400, ['Content-Type' => 'application/json'], json_encode(['error' => 'File path is required']));
+                        }
+
+                        // Security: verify file is within project root
+                        $realPath = realpath($file);
+                        if ($realPath === false || !str_starts_with($realPath, $projectRoot)) {
+                            return new Response(403, ['Content-Type' => 'application/json'], json_encode(['error' => 'Access denied']));
+                        }
+
+                        if (!file_exists($realPath) || !is_file($realPath)) {
+                            return new Response(404, ['Content-Type' => 'application/json'], json_encode(['error' => 'File not found']));
+                        }
+
+                        $content = file_get_contents($realPath);
+                        return new Response(200, ['Content-Type' => 'application/json'], json_encode(['content' => $content]));
+                    } catch (\Throwable $e) {
+                        return new Response(500, ['Content-Type' => 'application/json'], json_encode(['error' => 'Internal Server Error', 'message' => $e->getMessage()]));
+                    }
+                }
+
                 return new Response(404, ['Content-Type' => 'text/plain'], 'Not found');
             }
         );

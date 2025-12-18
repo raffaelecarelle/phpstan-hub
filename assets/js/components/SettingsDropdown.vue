@@ -119,24 +119,47 @@ const toggle = () => {
                             <button
                                 @click="$emit('view-changed', 'grouped')"
                                 :class="[
-                                    'flex-1 px-4 py-2 text-sm font-medium',
+                                    'flex-1 px-3 py-2 text-xs font-medium',
                                     currentViewMode === 'grouped'
                                         ? 'bg-blue-600 text-white'
                                         : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
                                 ]"
+                                title="Group errors by file"
                             >
+                                <svg class="w-4 h-4 mx-auto mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                                </svg>
                                 Grouped
                             </button>
                             <button
                                 @click="$emit('view-changed', 'individual')"
                                 :class="[
-                                    'flex-1 px-4 py-2 text-sm font-medium border-l border-gray-600',
+                                    'flex-1 px-3 py-2 text-xs font-medium border-l border-gray-600',
                                     currentViewMode === 'individual'
                                         ? 'bg-blue-600 text-white'
                                         : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
                                 ]"
+                                title="Show all errors in a flat list"
                             >
+                                <svg class="w-4 h-4 mx-auto mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                </svg>
                                 Individual
+                            </button>
+                            <button
+                                @click="$emit('view-changed', 'explorer')"
+                                :class="[
+                                    'flex-1 px-3 py-2 text-xs font-medium border-l border-gray-600',
+                                    currentViewMode === 'explorer'
+                                        ? 'bg-blue-600 text-white'
+                                        : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                                ]"
+                                title="Browse files in a tree with inline code viewer"
+                            >
+                                <svg class="w-4 h-4 mx-auto mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+                                </svg>
+                                Explorer
                             </button>
                         </div>
                     </div>
