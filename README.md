@@ -78,6 +78,8 @@ The application is powered by a PHP backend using the high-performance [ReactPHP
   - `POST /api/run`: Trigger analysis
   - `POST /api/ignore-error`: Add error to ignore list
   - `POST /api/file-content`: Retrieve file content with syntax-highlighted tokens
+  - `POST /api/save-file`: 🆕 Save edited file content to disk (for live editing)
+  - `POST /api/check-error`: 🆕 Re-run PHPStan analysis after file modifications
 
 ## Installation
 
@@ -129,6 +131,45 @@ npm run build
     - Ignore errors with one click - they fade out instantly
     - Use keyboard shortcuts: **Ctrl+/** to see all available shortcuts
     - Click on line numbers to open files in your IDE
+
+### 🆕 Live Code Editing (NEW!)
+
+PhpStanHub now includes a powerful **in-browser code editor** that lets you fix errors without leaving the web interface!
+
+**How to use:**
+
+1. **Open a file** in Explorer View that has PHPStan errors
+2. **Click "Edit"** button in the file header to enable editing mode
+3. **Click any line** to start editing (the line becomes an editable input)
+4. **Make your changes** - syntax highlighting is preserved for unmodified lines
+5. **Click "Check"** when done - this will:
+   - Save your changes to disk
+   - Re-run PHPStan on the entire codebase
+   - Update errors in real-time via WebSocket
+6. **See results instantly** - fixed errors disappear with fade-out animation
+
+**Visual feedback:**
+- **Colored syntax** = Original, unmodified code
+- **Gray text** = Your modifications
+- **Red background** = Lines with errors (always highlighted)
+- **Green "Check" button** = You modified an error line (recommended to verify fix)
+- **Blue "Check" button** = General modifications
+
+**Example workflow:**
+```
+1. PHPStan shows: "Missing parameter type for $bar"
+2. Click "Edit" → Click on the error line
+3. Change: function foo($bar)
+   To:     function foo(string $bar)
+4. Click "Check" → PHPStan re-runs
+5. Error disappears if fixed! ✅
+```
+
+This feature is perfect for:
+- Quick fixes during code review
+- Testing if a change resolves the error before committing
+- Learning from PHPStan suggestions by trying fixes immediately
+- Remote development where IDE integration isn't available
 
 ### Docker Usage
 
