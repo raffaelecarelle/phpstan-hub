@@ -152,11 +152,16 @@ class ServeCommand extends Command
         );
 
         if ($input->getOption('watch')) {
-            $pathsToWatch = ['src']; // Default paths to watch
+            $config = $this->getPhpStanConfig($projectRoot);
+            $pathsToWatch = $config['paths'];
+            $levelToWatch = $config['level'];
+
             $fileWatcher = new FileWatcher($pathsToWatch);
-            $loop?->addPeriodicTimer(1, function () use ($fileWatcher, $phpStanRunner, $statusHandler, $loop, $pathsToWatch, $output) {
-                if ($fileWatcher->hasChanges()) {
-                    $this->runAnalysis($phpStanRunner, $statusHandler, $loop, implode(' ', $pathsToWatch), 5, $output);
+            $configWatcher = new FileWatcher([$projectRoot], ['*.neon']);
+
+            $loop?->addPeriodicTimer(1, function () use ($fileWatcher, $configWatcher, $phpStanRunner, $statusHandler, $loop, $pathsToWatch, $levelToWatch, $output) {
+                if ($fileWatcher->hasChanges() || $configWatcher->hasChanges()) {
+                    $this->runAnalysis($phpStanRunner, $statusHandler, $loop, implode(' ', $pathsToWatch), $levelToWatch, $output);
                 }
             });
         }
@@ -300,6 +305,9 @@ class ServeCommand extends Command
 
     private function runAnalysis(PhpStanRunner $phpStanRunner, StatusHandler $statusHandler, $loop, string $paths, int $level, OutputInterface $output, bool $generateBaseline = false): void
     {
+        // Broadcast "running" status
+        $statusHandler->broadcast(json_encode(['status' => 'running']));
+
         $process = $phpStanRunner->run($paths, $level, $generateBaseline);
         $output->writeln(sprintf('Running command: %s', $process->getCommand()));
         $process->start($loop);

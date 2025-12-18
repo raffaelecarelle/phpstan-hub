@@ -71,6 +71,36 @@ const saveSettings = (settings) => {
     runAnalysis(settings);
 };
 
+const handleErrorIgnored = (data) => {
+    // Remove the error from results locally without re-running analysis
+    if (!results.value || !results.value.files) return;
+
+    // Create a deep copy to ensure reactivity
+    const newFiles = { ...results.value.files };
+    const file = newFiles[data.file];
+
+    if (!file) return;
+
+    // Filter out the ignored error
+    file.messages = file.messages.filter(msg => msg.message !== data.error);
+
+    // If no more errors in this file, remove the file from results
+    if (file.messages.length === 0) {
+        delete newFiles[data.file];
+    }
+
+    // Update results with new files object to trigger reactivity
+    results.value = {
+        ...results.value,
+        files: newFiles,
+        totals: {
+            ...results.value.totals,
+            errors: results.value.totals.errors - 1,
+            file_errors: Object.keys(newFiles).length,
+        }
+    };
+};
+
 onMounted(() => {
     fetchConfig();
     connectWebSocket();
@@ -130,6 +160,7 @@ onMounted(() => {
                 :editor-url="config.editorUrl"
                 :project-root="config.projectRoot"
                 :host-project-root="config.hostProjectRoot"
+                @error-ignored="handleErrorIgnored"
             />
         </div>
     </div>

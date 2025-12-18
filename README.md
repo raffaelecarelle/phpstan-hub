@@ -7,15 +7,29 @@ The application is powered by a PHP backend using the high-performance [ReactPHP
 ## Features
 
 - **Real-Time Analysis**: Run PHPStan directly from the browser with live results via WebSocket
-- **Interactive Results**: Errors are grouped by file and displayed clearly with syntax highlighting
+- **Advanced Explorer View**:
+  - **Tree-based Navigation**: Hierarchical file browser with error count badges
+  - **Smart Search**: Full-text search across files with regex support and syntax highlighting
+  - **PHP Syntax Highlighting**: Token-based colorization for better code readability
+  - **Intelligent Code Viewer**:
+    - Automatic collapsing of code sections without errors (>10 lines)
+    - Virtual scrolling for large files (>1000 lines) with smooth performance
+    - Click on line numbers to open files in your IDE
+  - **Quick Fix Suggestions**: Context-aware suggestions for common PHPStan errors
+  - **Instant Error Removal**: Ignore errors with smooth fade-out animation (no re-analysis needed)
+  - **Keyboard Navigation**: Full keyboard shortcuts support (Alt+1/2 for view switching, Ctrl+/ for help)
+  - **State Preservation**: Expanded folders remain open when updating error counts
+- **Multiple View Modes**:
+  - **Explorer View**: IDE-like experience with file tree and code viewer
+  - **Grouped View**: Errors grouped by file
+  - **Individual View**: Flat list of all errors
 - **IDE Integration**: Click on filenames or line numbers to open files directly in your IDE (supports PhpStorm, IntelliJ, VSCode)
 - **Watch Mode**: Automatically re-run analysis when source files change using the `--watch` flag
 - **Configuration Detection**: Automatically detects and uses your project's `phpstan.neon` or `phpstan.neon.dist` configuration
-- **Customizable UI**:
-  - Adjust analysis paths and levels directly from the UI
-  - Switch between grouped (by file) and individual error views
-  - Real-time error counter in the header
-- **Error Ignoring**: Add errors to your PHPStan configuration directly from the UI
+- **Real-Time Error Management**:
+  - Ignore errors directly from the UI with instant visual feedback
+  - Error counts update automatically without re-running analysis
+  - Smooth animations for better UX
 - **Baseline Generation**: Generate PHPStan baseline files from the interface
 - **Docker Support**: Fully containerized environment with Docker Compose
 
@@ -31,14 +45,23 @@ The application is powered by a PHP backend using the high-performance [ReactPHP
 
 ### Frontend (Vue.js + Vite)
 - **Main App** (`assets/js/App.vue`): Application shell with WebSocket integration
-- **Components**:
+- **Core Components**:
   - `ControlPanel.vue`: Analysis control interface
   - `ResultsList.vue`: Error display with grouping capabilities
+  - `ExplorerView.vue`: Advanced IDE-like explorer with tree navigation
+  - `FileTreeSidebar.vue`: Interactive file tree with real-time error counts and state preservation
+  - `CodeViewer.vue`: Syntax-highlighted code viewer with virtual scrolling for large files
+  - `SearchInFiles.vue`: Full-text search with regex support and result highlighting
+  - `QuickFixSuggestions.vue`: Context-aware error fix suggestions
+  - `KeyboardShortcutsModal.vue`: Keyboard shortcuts help overlay
+  - `InlineDiff.vue`: Before/after diff viewer for code changes
   - `SettingsModal.vue`: Configuration interface
   - `SettingsDropdown.vue`: Quick settings access
   - `Copyable.vue`: Reusable copy-to-clipboard component
+- **Composables**:
+  - `useKeyboardShortcuts.js`: Keyboard navigation and shortcuts management
 - **Build Tool**: Vite with Vue plugin for fast HMR during development
-- **Styling**: Tailwind CSS with custom configuration
+- **Styling**: Tailwind CSS with custom dark theme configuration
 
 ### Communication
 - **HTTP Server**: ReactPHP HTTP server on port 8081 for API and static assets
@@ -47,6 +70,7 @@ The application is powered by a PHP backend using the high-performance [ReactPHP
   - `GET /api/config`: Retrieve PHPStan configuration
   - `POST /api/run`: Trigger analysis
   - `POST /api/ignore-error`: Add error to ignore list
+  - `POST /api/file-content`: Retrieve file content with syntax-highlighted tokens
 
 ## Installation
 
@@ -89,7 +113,15 @@ npm run build
     - Configure paths and PHPStan level in the UI
     - Click **Analyze**
     - View results in real-time
-    - Click on file paths to open them in your IDE
+    - Switch to **Explorer View** for the best experience (Settings → View Mode)
+
+5.  **Explorer View Features**:
+    - Navigate files using the tree sidebar with error count badges
+    - Search across files with **Ctrl+P** or using the Search tab
+    - Click on errors to see **Quick Fix Suggestions**
+    - Ignore errors with one click - they fade out instantly
+    - Use keyboard shortcuts: **Ctrl+/** to see all available shortcuts
+    - Click on line numbers to open files in your IDE
 
 ### Docker Usage
 
@@ -228,6 +260,16 @@ PhpStanHub uses modern JavaScript features and requires:
 - Firefox 88+
 - Safari 14+
 
+## Keyboard Shortcuts
+
+Press **Ctrl+/** (or **Cmd+/** on Mac) in Explorer View to see all available shortcuts:
+
+- **Alt+1**: Switch to Files tab
+- **Alt+2**: Switch to Search tab
+- **Ctrl+J / Ctrl+K**: Navigate between files
+- **Ctrl+W**: Close current file
+- **Esc**: Close modals
+
 ## Troubleshooting
 
 ### WebSocket Connection Issues
@@ -243,6 +285,12 @@ If the WebSocket fails to connect:
 ### Watch Mode Not Detecting Changes
 - The file watcher only monitors `.php` files in specified paths
 - Default watch path is `src/`, configure via your PHPStan config
+
+### Error Ignoring Not Working
+If "Ignore this error" returns a 400 error:
+- Ensure the error message matches exactly
+- Check that PHPStan configuration file is writable
+- Verify the file path is within the project root
 
 ## Contributing
 

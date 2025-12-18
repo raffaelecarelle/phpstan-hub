@@ -12,6 +12,35 @@ const props = defineProps({
 const emit = defineEmits(['file-selected']);
 
 const fileTree = ref(null);
+const expandedFolders = ref(new Set()); // Track expanded folder paths
+
+// Helper to save expanded state before rebuilding
+const saveExpandedState = (node) => {
+    if (!node || !node.children) return;
+
+    Object.values(node.children).forEach(child => {
+        if (child.type === 'folder') {
+            if (child.expanded && child.relativePath) {
+                expandedFolders.value.add(child.relativePath);
+            }
+            saveExpandedState(child);
+        }
+    });
+};
+
+// Helper to restore expanded state after rebuilding
+const restoreExpandedState = (node) => {
+    if (!node || !node.children) return;
+
+    Object.values(node.children).forEach(child => {
+        if (child.type === 'folder') {
+            if (child.relativePath && expandedFolders.value.has(child.relativePath)) {
+                child.expanded = true;
+            }
+            restoreExpandedState(child);
+        }
+    });
+};
 
 // Build tree when files change
 watch(() => [props.files, props.projectRoot], ([newFiles, newProjectRoot]) => {
@@ -21,8 +50,15 @@ watch(() => [props.files, props.projectRoot], ([newFiles, newProjectRoot]) => {
         return;
     }
 
+    // Save current expanded state
+    if (fileTree.value) {
+        saveExpandedState(fileTree.value);
+    }
+
     if (Object.keys(newFiles).length > 0 && newProjectRoot) {
         fileTree.value = buildFileTree(newFiles, newProjectRoot);
+        // Restore expanded state
+        restoreExpandedState(fileTree.value);
     } else if (Object.keys(newFiles).length === 0) {
         console.log('[FileTreeSidebar] No files, setting tree to null');
         fileTree.value = null;
@@ -32,6 +68,14 @@ watch(() => [props.files, props.projectRoot], ([newFiles, newProjectRoot]) => {
 const toggleFolder = (node) => {
     if (node.type === 'folder') {
         node.expanded = !node.expanded;
+
+        // Update expanded folders set
+        const nodePath = node.relativePath || node.name;
+        if (node.expanded) {
+            expandedFolders.value.add(nodePath);
+        } else {
+            expandedFolders.value.delete(nodePath);
+        }
     }
 };
 

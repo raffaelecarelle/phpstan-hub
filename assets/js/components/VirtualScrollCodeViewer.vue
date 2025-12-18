@@ -1,7 +1,6 @@
 <script setup>
 import { ref, watch, computed, onMounted, onUnmounted } from 'vue';
 import Copyable from './Copyable.vue';
-import QuickFixSuggestions from './QuickFixSuggestions.vue';
 
 const props = defineProps({
     filePath: String,
@@ -11,14 +10,11 @@ const props = defineProps({
     hostProjectRoot: String|null,
 });
 
-const emit = defineEmits(['error-ignored']);
-
 const fileContent = ref(null);
 const tokens = ref([]);
 const loading = ref(false);
 const error = ref(null);
 const collapsedSections = ref({});
-const fadingOutErrors = ref(new Set()); // Track errors being removed
 
 // Virtual scrolling state
 const containerRef = ref(null);
@@ -260,61 +256,10 @@ const renderLineWithTokens = (lineNum) => {
 
     return lineTokens;
 };
-
-const handleIgnoreError = async (error) => {
-    try {
-        const response = await fetch('http://127.0.0.1:8081/api/ignore-error', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                file: props.filePath,
-                error: error.message,
-            }),
-        });
-
-        if (response.ok) {
-            // Add to fading out set for animation
-            const errorKey = `${error.line}-${error.message}`;
-            fadingOutErrors.value.add(errorKey);
-
-            // Wait for animation to complete, then emit event
-            setTimeout(() => {
-                fadingOutErrors.value.delete(errorKey);
-                emit('error-ignored', {
-                    file: props.filePath,
-                    error: error.message,
-                    line: error.line
-                });
-            }, 500); // Match the CSS transition duration
-        } else {
-            const errorData = await response.json();
-            console.error('Failed to ignore error:', errorData);
-            alert(`Failed to add error to ignore list: ${errorData.error || 'Unknown error'}`);
-        }
-    } catch (err) {
-        console.error('Error ignoring error:', err);
-        alert('Failed to add error to ignore list.');
-    }
-};
-
-const handleApplyFix = (fixData) => {
-    // For now, just copy the suggested code
-    if (fixData.code) {
-        navigator.clipboard.writeText(fixData.code);
-        alert('Fix code copied to clipboard!');
-    }
-};
-
-const isErrorFadingOut = (error) => {
-    const errorKey = `${error.line}-${error.message}`;
-    return fadingOutErrors.value.has(errorKey);
-};
-
 </script>
 
 <template>
-    <div class="h-full bg-gray-900 flex">
-        <div class="flex-1 overflow-y-auto" ref="containerRef" @scroll="handleScroll">
+    <div class="h-full bg-gray-900 overflow-y-auto" ref="containerRef" @scroll="handleScroll">
         <!-- Empty State -->
         <div v-if="!filePath" class="flex items-center justify-center h-full text-gray-500">
             <div class="text-center">
@@ -375,108 +320,78 @@ const isErrorFadingOut = (error) => {
                 <div class="font-mono text-sm" :style="{ height: totalHeight, position: 'relative' }">
                     <div :style="{ transform: `translateY(${contentOffset}px)` }">
                         <template v-for="(section, index) in visibleSections" :key="index">
-                        <!-- Collapsible Section -->
-                        <div v-if="section.type === 'collapsible'">
-                            <div
-                                v-if="isSectionCollapsed(section)"
-                                @click="toggleSection(section)"
-                                class="bg-gray-800 border-y border-gray-700 px-4 py-2 cursor-pointer hover:bg-gray-750 transition-colors flex items-center justify-center"
-                            >
-                                <svg class="w-4 h-4 mr-2 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                                </svg>
-                                <span class="text-gray-500 text-xs">
-                                    {{ section.lineCount }} lines hidden (lines {{ section.startLine }} - {{ section.endLine }})
-                                </span>
-                            </div>
-
-                            <div v-else>
+                            <!-- Collapsible Section -->
+                            <div v-if="section.type === 'collapsible'">
                                 <div
+                                    v-if="isSectionCollapsed(section)"
                                     @click="toggleSection(section)"
                                     class="bg-gray-800 border-y border-gray-700 px-4 py-2 cursor-pointer hover:bg-gray-750 transition-colors flex items-center justify-center"
                                 >
-                                    <svg class="w-4 h-4 mr-2 text-gray-500 transform rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <svg class="w-4 h-4 mr-2 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                                     </svg>
-                                    <span class="text-gray-500 text-xs">Collapse {{ section.lineCount }} lines</span>
+                                    <span class="text-gray-500 text-xs">
+                                        {{ section.lineCount }} lines hidden (lines {{ section.startLine }} - {{ section.endLine }})
+                                    </span>
                                 </div>
 
-                                <div v-for="lineNum in (section.endLine - section.startLine + 1)" :key="lineNum" class="py-1" :style="{ height: LINE_HEIGHT + 'px' }">
-                                    <div class="flex hover:bg-gray-800 transition-colors leading-tight">
-                                        <div class="w-16 flex-shrink-0 text-right pr-4 text-gray-600 select-none border-r border-gray-700">
-                                            {{ section.startLine + lineNum - 1 }}
-                                        </div>
-                                        <div class="flex-grow px-4 overflow-x-auto leading-tight">
-                                            <code class="whitespace-pre"><template v-if="tokensByLine[section.startLine + lineNum - 1]"><span v-for="(token, tokenIdx) in tokensByLine[section.startLine + lineNum - 1]" :key="tokenIdx" :style="{ color: token.color }">{{ token.text }}</span></template><template v-else>{{ lines[section.startLine + lineNum - 2] || '' }}</template></code>
+                                <div v-else>
+                                    <div
+                                        @click="toggleSection(section)"
+                                        class="bg-gray-800 border-y border-gray-700 px-4 py-2 cursor-pointer hover:bg-gray-750 transition-colors flex items-center justify-center"
+                                    >
+                                        <svg class="w-4 h-4 mr-2 text-gray-500 transform rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                                        </svg>
+                                        <span class="text-gray-500 text-xs">Collapse {{ section.lineCount }} lines</span>
+                                    </div>
+
+                                    <div v-for="lineNum in (section.endLine - section.startLine + 1)" :key="lineNum" class="py-1" :style="{ height: LINE_HEIGHT + 'px' }">
+                                        <div class="flex hover:bg-gray-800 transition-colors leading-tight">
+                                            <div class="w-16 flex-shrink-0 text-right pr-4 text-gray-600 select-none border-r border-gray-700">
+                                                {{ section.startLine + lineNum - 1 }}
+                                            </div>
+                                            <div class="flex-grow px-4 overflow-x-auto leading-tight">
+                                                <code class="whitespace-pre"><template v-if="tokensByLine[section.startLine + lineNum - 1]"><span v-for="(token, tokenIdx) in tokensByLine[section.startLine + lineNum - 1]" :key="tokenIdx" :style="{ color: token.color }">{{ token.text }}</span></template><template v-else>{{ lines[section.startLine + lineNum - 2] || '' }}</template></code>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
 
-                        <!-- Error Line Section -->
-                        <div v-else-if="section.type === 'error'" class="bg-red-900 bg-opacity-20 border-l-4 border-red-500">
-                            <div class="flex">
-                                <a
-                                    :href="getFileLink(section.line)"
-                                    class="py-2 w-16 flex-shrink-0 text-right pr-4 py-1 text-red-400 font-semibold select-none border-r border-red-700 hover:underline"
-                                >
-                                    {{ section.line }}
-                                </a>
-                                <div class="flex-grow">
-                                    <div class="px-4 py-2 overflow-x-auto leading-tight">
-                                        <code class="whitespace-pre"><template v-if="tokensByLine[section.line]"><span v-for="(token, tokenIdx) in tokensByLine[section.line]" :key="tokenIdx" :style="{ color: token.color }">{{ token.text }}</span></template><template v-else>{{ lines[section.line - 1] || '' }}</template></code>
-                                    </div>
+                            <!-- Error Line Section -->
+                            <div v-else-if="section.type === 'error'" class="bg-red-900 bg-opacity-20 border-l-4 border-red-500">
+                                <div class="flex">
+                                    <a
+                                        :href="getFileLink(section.line)"
+                                        class="w-16 flex-shrink-0 text-right pr-4 py-1 text-red-400 font-semibold select-none border-r border-red-700 hover:underline"
+                                    >
+                                        {{ section.line }}
+                                    </a>
+                                    <div class="flex-grow">
+                                        <div class="px-4 overflow-x-auto leading-tight">
+                                            <code class="whitespace-pre"><template v-if="tokensByLine[section.line]"><span v-for="(token, tokenIdx) in tokensByLine[section.line]" :key="tokenIdx" :style="{ color: token.color }">{{ token.text }}</span></template><template v-else>{{ lines[section.line - 1] || '' }}</template></code>
+                                        </div>
 
-                                    <!-- Error Messages -->
-                                    <div class="px-4 pb-2">
-                                        <TransitionGroup name="fade" tag="div">
+                                        <!-- Error Messages -->
+                                        <div class="px-4 pb-2">
                                             <div
                                                 v-for="(err, errIndex) in errorsByLine[section.line]"
-                                                :key="`${err.line}-${err.message}`"
-                                                v-show="!isErrorFadingOut(err)"
-                                                class="mt-2 space-y-2"
+                                                :key="errIndex"
+                                                class="mt-2 p-3 bg-gray-800 border border-red-700 rounded"
                                             >
-                                                <div class="p-3 bg-gray-800 border border-red-700 rounded">
-                                                    <Copyable :text="err.message">
-                                                        <p class="text-sm text-gray-300">{{ err.message }}</p>
-                                                    </Copyable>
-                                                </div>
-<!--                                                <QuickFixSuggestions-->
-<!--                                                    :error="err"-->
-<!--                                                    :file-path="filePath"-->
-<!--                                                    :project-root="projectRoot"-->
-<!--                                                    @ignore-error="handleIgnoreError"-->
-<!--                                                    @apply-fix="handleApplyFix"-->
-<!--                                                />-->
+                                                <Copyable :text="err.message">
+                                                    <p class="text-sm text-gray-300">{{ err.message }}</p>
+                                                </Copyable>
                                             </div>
-                                        </TransitionGroup>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
                         </template>
                     </div>
                 </div>
             </div>
         </div>
-        </div>
     </div>
 </template>
-
-<style scoped>
-.fade-enter-active,
-.fade-leave-active {
-    transition: opacity 0.5s ease, transform 0.5s ease;
-}
-
-.fade-enter-from {
-    opacity: 0;
-    transform: translateX(-10px);
-}
-
-.fade-leave-to {
-    opacity: 0;
-    transform: translateX(10px);
-}
-</style>

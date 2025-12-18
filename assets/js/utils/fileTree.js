@@ -22,11 +22,15 @@ export function buildFileTree(files, projectRoot = '') {
 
         const parts = relativePath.split('/');
         let currentNode = tree;
+        let currentRelativePath = '';
 
         // Traverse/create folder structure
         for (let i = 0; i < parts.length; i++) {
             const part = parts[i];
             const isFile = i === parts.length - 1;
+
+            // Build the relative path for this node
+            currentRelativePath = currentRelativePath ? `${currentRelativePath}/${part}` : part;
 
             if (!currentNode.children[part]) {
                 currentNode.children[part] = {
@@ -35,8 +39,8 @@ export function buildFileTree(files, projectRoot = '') {
                     children: isFile ? null : {},
                     errors: 0,
                     expanded: false,
-                    fullPath: filePath,
-                    relativePath: relativePath,
+                    fullPath: isFile ? filePath : null,
+                    relativePath: currentRelativePath,
                 };
 
                 if (isFile) {

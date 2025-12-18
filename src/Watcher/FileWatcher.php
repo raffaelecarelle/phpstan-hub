@@ -8,8 +8,10 @@ class FileWatcher
 {
     private array $files = [];
 
-    public function __construct(private readonly array $paths)
-    {
+    public function __construct(
+        private readonly array $paths,
+        private readonly array $names = ['*.php']
+    ) {
         $this->files = $this->findFiles();
     }
 
@@ -38,7 +40,11 @@ class FileWatcher
             return [];
         }
 
-        $finder = Finder::create()->files()->in($this->paths)->name('*.php');
+        $finder = Finder::create()->files()->in($this->paths);
+        foreach ($this->names as $name) {
+            $finder->name($name);
+        }
+
         $files = [];
         foreach ($finder as $file) {
             $files[$file->getRealPath()] = $file->getMTime();
