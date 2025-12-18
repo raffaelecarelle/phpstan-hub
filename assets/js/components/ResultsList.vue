@@ -120,66 +120,6 @@ const ignoreError = async (errorMessage, filePath) => {
     }
 };
 
-const successMessages = [
-    "🚀 No errors! Your code is ready for takeoff!",
-    "🎯 Flawless code! You're a quality sniper!",
-    "⚡ Zero errors! Your code is lightning fast!",
-    "🏆 No errors! You've won the clean code trophy!",
-    "🔥 Everything's perfect! Your code is on fire (in a good way)!",
-    "💎 No errors! Diamond quality code!",
-    "🎨 Zero problems! A masterpiece of code!",
-    "🌟 Impeccable! Your code shines!",
-    "🎪 No errors! The show can begin!",
-    "🦸 Clean code! You're the quality hero!",
-    "🎵 Zero errors! Your code is a perfect symphony!",
-    "🧙 No errors! Pure code magic!",
-    "🎰 Jackpot! All tests are green!",
-    "🏅 Gold medal for your code!",
-    "🌈 Zero errors! Your code is a rainbow of perfection!",
-    "🚁 All clear! Green light for deployment!",
-    "🎬 Aaand... Action! No errors, let's roll!",
-    "🧩 Perfect fit! No piece out of place!",
-    "⚙️ Well-oiled machine! Zero problems detected!",
-    "🎊 It's party time! The code is flawless!",
-    "🔮 I've looked into the future... no bugs on the horizon!",
-    "🏰 Impregnable fortress! Bulletproof code!",
-    "🌊 Calm seas! Smooth sailing ahead!",
-    "🎯 Target hit! 100% quality!",
-    "🌺 Code in bloom! No weeds to pull!",
-    "🎪 The circus is perfect! Every act in place!",
-    "🏎️ Perfect engine! Ready to race!",
-    "🎓 Graduated with honors for this code!",
-    "🌙 Starry night! Your code lights up the darkness!",
-    "🎸 Rock & Roll! Your code rocks!",
-    "🍕 Like a perfect pizza! No wrong ingredients!",
-    "🏔️ Summit conquered! Expert climber code!",
-    "🎭 Curtain up! Flawless performance!",
-    "🔧 Everything in place! Zero maintenance needed!",
-    "🌻 Sunny code! No shadows to report!",
-    "🎮 Level complete! No game over in sight!",
-    "🏖️ Peaceful vacation! Code relaxes without issues!",
-    "🎺 Perfect jazz! Your code improvises with class!",
-    "🌍 Around the world without hitches! Global code!",
-    "🎨 Perfect palette! Every color in the right place!",
-    "🏹 Straight arrow! Code as precise as an archer!",
-    "🌙 Peaceful night! The code sleeps soundly!",
-    "🎉 Champagne! Time to celebrate!",
-    "🔬 Analysis complete! Everything under control!",
-    "🎪 Perfect trapeze! No falls!",
-    "🌋 Dormant volcano! No bug eruptions!",
-    "🎯 Arrows in the bullseye! Absolute precision!",
-    "🏆 Podium conquered! Gold in quality!",
-    "🌠 Shooting stars! Your code shines in the sky!",
-    "🎪 Grand finale! Applause for this code!",
-    "🔐 Armored safe! Maximum security!",
-    "🎨 Digital Monet! A working work of art!",
-    "🌴 Paradise found! Dream code!"
-];
-
-const randomSuccessMessage = () => {
-    return successMessages[Math.floor(Math.random() * successMessages.length)];
-}
-
 </script>
 
 <template>
@@ -293,7 +233,7 @@ const randomSuccessMessage = () => {
             </div>
         </div>
         <div v-else-if="!hasErrors" class="text-center p-12 bg-gray-800 rounded-lg shadow-lg">
-            <p class="text-xl text-gray-400">{{ randomSuccessMessage() }}</p>
+            <p class="text-xl text-gray-400">🎉 No errors found! Your code is clean!</p>
         </div>
     </div>
 </template>
