@@ -8,7 +8,7 @@ const props = defineProps({
     viewMode: String,
     editorUrl: String,
     projectRoot: String,
-    hostProjectRoot: String,
+    hostProjectRoot: String|null,
 });
 
 const identifierColorCache = ref({});
