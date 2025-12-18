@@ -6,8 +6,13 @@ use Symfony\Component\Finder\Finder;
 
 class FileWatcher
 {
+    /** @var array<string, int> */
     private array $files = [];
 
+    /**
+     * @param string[] $paths
+     * @param string[] $names
+     */
     public function __construct(
         private readonly array $paths,
         private readonly array $names = ['*.php']
@@ -34,9 +39,12 @@ class FileWatcher
         return false;
     }
 
+    /**
+     * @return array<string, int>
+     */
     private function findFiles(): array
     {
-        if (empty($this->paths)) {
+        if ($this->paths === []) {
             return [];
         }
 
@@ -49,6 +57,7 @@ class FileWatcher
         foreach ($finder as $file) {
             $files[$file->getRealPath()] = $file->getMTime();
         }
+
         return $files;
     }
 }

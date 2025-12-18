@@ -37,6 +37,7 @@ class FileWatcherTest extends TestCase
                 unlink($path);
             }
         }
+
         rmdir($dir);
     }
 
@@ -44,9 +45,9 @@ class FileWatcherTest extends TestCase
     {
         file_put_contents($this->tempDir . '/test.php', '<?php echo "test";');
 
-        $watcher = new FileWatcher([$this->tempDir]);
+        $fileWatcher = new FileWatcher([$this->tempDir]);
 
-        $this->assertFalse($watcher->hasChanges());
+        $this->assertFalse($fileWatcher->hasChanges());
     }
 
     public function testWatcherDetectsModifiedFile(): void
@@ -54,23 +55,23 @@ class FileWatcherTest extends TestCase
         $filePath = $this->tempDir . '/test.php';
         file_put_contents($filePath, '<?php echo "test";');
 
-        $watcher = new FileWatcher([$this->tempDir]);
+        $fileWatcher = new FileWatcher([$this->tempDir]);
 
         sleep(1); // Ensure modification time changes
         touch($filePath);
 
-        $this->assertTrue($watcher->hasChanges());
+        $this->assertTrue($fileWatcher->hasChanges());
     }
 
     public function testWatcherDetectsNewFile(): void
     {
         file_put_contents($this->tempDir . '/existing.php', '<?php echo "test";');
 
-        $watcher = new FileWatcher([$this->tempDir]);
+        $fileWatcher = new FileWatcher([$this->tempDir]);
 
         file_put_contents($this->tempDir . '/new.php', '<?php echo "new";');
 
-        $this->assertTrue($watcher->hasChanges());
+        $this->assertTrue($fileWatcher->hasChanges());
     }
 
     public function testWatcherDetectsDeletedFile(): void
@@ -78,30 +79,30 @@ class FileWatcherTest extends TestCase
         $filePath = $this->tempDir . '/test.php';
         file_put_contents($filePath, '<?php echo "test";');
 
-        $watcher = new FileWatcher([$this->tempDir]);
+        $fileWatcher = new FileWatcher([$this->tempDir]);
 
         unlink($filePath);
 
-        $this->assertTrue($watcher->hasChanges());
+        $this->assertTrue($fileWatcher->hasChanges());
     }
 
     public function testWatcherHandlesEmptyDirectory(): void
     {
-        $watcher = new FileWatcher([$this->tempDir]);
+        $fileWatcher = new FileWatcher([$this->tempDir]);
 
-        $this->assertFalse($watcher->hasChanges());
+        $this->assertFalse($fileWatcher->hasChanges());
     }
 
     public function testWatcherOnlyWatchesPhpFiles(): void
     {
         file_put_contents($this->tempDir . '/test.php', '<?php echo "test";');
 
-        $watcher = new FileWatcher([$this->tempDir]);
+        $fileWatcher = new FileWatcher([$this->tempDir]);
 
         // Create non-PHP file
         file_put_contents($this->tempDir . '/test.txt', 'text content');
 
-        $this->assertFalse($watcher->hasChanges());
+        $this->assertFalse($fileWatcher->hasChanges());
     }
 
     public function testWatcherWithMultiplePaths(): void
@@ -112,15 +113,15 @@ class FileWatcherTest extends TestCase
         file_put_contents($this->tempDir . '/test1.php', '<?php echo "test1";');
         file_put_contents($tempDir2 . '/test2.php', '<?php echo "test2";');
 
-        $watcher = new FileWatcher([$this->tempDir, $tempDir2]);
+        $fileWatcher = new FileWatcher([$this->tempDir, $tempDir2]);
 
-        $this->assertFalse($watcher->hasChanges());
+        $this->assertFalse($fileWatcher->hasChanges());
 
         // Modify file in second directory
         sleep(1);
         touch($tempDir2 . '/test2.php');
 
-        $this->assertTrue($watcher->hasChanges());
+        $this->assertTrue($fileWatcher->hasChanges());
 
         // Cleanup
         unlink($tempDir2 . '/test2.php');
@@ -129,9 +130,9 @@ class FileWatcherTest extends TestCase
 
     public function testWatcherWithEmptyPaths(): void
     {
-        $watcher = new FileWatcher([]);
+        $fileWatcher = new FileWatcher([]);
 
-        $this->assertFalse($watcher->hasChanges());
+        $this->assertFalse($fileWatcher->hasChanges());
     }
 
     public function testWatcherResetsStateAfterDetectingChanges(): void
@@ -139,16 +140,16 @@ class FileWatcherTest extends TestCase
         $filePath = $this->tempDir . '/test.php';
         file_put_contents($filePath, '<?php echo "test";');
 
-        $watcher = new FileWatcher([$this->tempDir]);
+        $fileWatcher = new FileWatcher([$this->tempDir]);
 
         sleep(1);
         touch($filePath);
 
         // First check detects changes
-        $this->assertTrue($watcher->hasChanges());
+        $this->assertTrue($fileWatcher->hasChanges());
 
         // Second check without new changes should return false
-        $this->assertFalse($watcher->hasChanges());
+        $this->assertFalse($fileWatcher->hasChanges());
     }
 
     public function testWatcherTracksMultipleFiles(): void
@@ -157,12 +158,12 @@ class FileWatcherTest extends TestCase
         file_put_contents($this->tempDir . '/test2.php', '<?php echo "test2";');
         file_put_contents($this->tempDir . '/test3.php', '<?php echo "test3";');
 
-        $watcher = new FileWatcher([$this->tempDir]);
+        $fileWatcher = new FileWatcher([$this->tempDir]);
 
         sleep(1);
         touch($this->tempDir . '/test2.php');
 
-        $this->assertTrue($watcher->hasChanges());
+        $this->assertTrue($fileWatcher->hasChanges());
     }
 
     public function testWatcherHandlesSubdirectories(): void
@@ -172,12 +173,12 @@ class FileWatcherTest extends TestCase
 
         file_put_contents($subDir . '/nested.php', '<?php echo "nested";');
 
-        $watcher = new FileWatcher([$this->tempDir]);
+        $fileWatcher = new FileWatcher([$this->tempDir]);
 
         sleep(1);
         touch($subDir . '/nested.php');
 
-        $this->assertTrue($watcher->hasChanges());
+        $this->assertTrue($fileWatcher->hasChanges());
 
         // Cleanup
         unlink($subDir . '/nested.php');
@@ -189,12 +190,12 @@ class FileWatcherTest extends TestCase
         $filePath = $this->tempDir . '/test.php';
         file_put_contents($filePath, '<?php echo "test";');
 
-        $watcher = new FileWatcher([$this->tempDir]);
+        $fileWatcher = new FileWatcher([$this->tempDir]);
 
         sleep(1);
         file_put_contents($filePath, '<?php echo "modified";');
 
-        $this->assertTrue($watcher->hasChanges());
+        $this->assertTrue($fileWatcher->hasChanges());
     }
 
     public function testWatcherHandlesMultipleConsecutiveChanges(): void
@@ -202,21 +203,21 @@ class FileWatcherTest extends TestCase
         $filePath = $this->tempDir . '/test.php';
         file_put_contents($filePath, '<?php echo "test";');
 
-        $watcher = new FileWatcher([$this->tempDir]);
+        $fileWatcher = new FileWatcher([$this->tempDir]);
 
         // First change
         sleep(1);
         touch($filePath);
-        $this->assertTrue($watcher->hasChanges());
+        $this->assertTrue($fileWatcher->hasChanges());
 
         // Second change
         sleep(1);
         touch($filePath);
-        $this->assertTrue($watcher->hasChanges());
+        $this->assertTrue($fileWatcher->hasChanges());
 
         // Third change
         sleep(1);
         touch($filePath);
-        $this->assertTrue($watcher->hasChanges());
+        $this->assertTrue($fileWatcher->hasChanges());
     }
 }

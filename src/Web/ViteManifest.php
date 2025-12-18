@@ -2,10 +2,9 @@
 
 namespace PhpStanHub\Web;
 
-use function var_dump;
-
 class ViteManifest
 {
+    /** @var array<string, mixed> */
     private array $manifest = [];
 
     public function __construct(private readonly string $manifestPath)
@@ -33,6 +32,7 @@ class ViteManifest
         foreach ($entry['css'] as $cssFile) {
             $styles .= sprintf('<link rel="stylesheet" href="/build/%s">', $cssFile);
         }
+
         return $styles;
     }
 }

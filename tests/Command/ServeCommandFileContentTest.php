@@ -13,7 +13,9 @@ use PHPUnit\Framework\TestCase;
 class ServeCommandFileContentTest extends TestCase
 {
     private string $tempDir;
+
     private string $testFilePath;
+
     private string $projectRoot;
 
     protected function setUp(): void
@@ -46,6 +48,7 @@ class ServeCommandFileContentTest extends TestCase
             $path = $dir . '/' . $file;
             is_dir($path) ? $this->removeDirectory($path) : unlink($path);
         }
+
         rmdir($dir);
     }
 
@@ -116,6 +119,7 @@ class ServeCommandFileContentTest extends TestCase
             if (is_link($symlinkPath)) {
                 unlink($symlinkPath);
             }
+
             if (file_exists($outsideFile)) {
                 unlink($outsideFile);
             }
@@ -154,7 +158,7 @@ class ServeCommandFileContentTest extends TestCase
         // Simulate API response structure
         $response = [
             'content' => $content,
-            'tokens' => []
+            'tokens' => [],
         ];
 
         // Process tokens like the API does
@@ -171,7 +175,7 @@ class ServeCommandFileContentTest extends TestCase
                             'text' => $lineText . ($i < count($lines) - 1 ? "\n" : ''),
                             'color' => $color,
                             'line' => $currentLine,
-                            'type' => token_name($token[0])
+                            'type' => token_name($token[0]),
                         ];
                         if ($i < count($lines) - 1) {
                             $currentLine++;
@@ -182,7 +186,7 @@ class ServeCommandFileContentTest extends TestCase
                         'text' => $tokenText,
                         'color' => $color,
                         'line' => $currentLine,
-                        'type' => token_name($token[0])
+                        'type' => token_name($token[0]),
                     ];
                 }
             } else {
@@ -190,7 +194,7 @@ class ServeCommandFileContentTest extends TestCase
                     'text' => $token,
                     'color' => '#f87171',
                     'line' => $currentLine,
-                    'type' => 'PUNCTUATION'
+                    'type' => 'PUNCTUATION',
                 ];
             }
         }
@@ -231,13 +235,21 @@ class ServeCommandFileContentTest extends TestCase
 
         $spacesFound = false;
         foreach ($tokens as $token) {
-            if (is_array($token) && $token[0] === T_WHITESPACE) {
-                // Check if this whitespace contains actual spaces (not just newlines)
-                if (str_contains($token[1], ' ')) {
-                    $spacesFound = true;
-                    break;
-                }
+            if (!is_array($token)) {
+                continue;
             }
+
+            if ($token[0] !== T_WHITESPACE) {
+                continue;
+            }
+
+            // Check if this whitespace contains actual spaces (not just newlines)
+            if (!str_contains($token[1], ' ')) {
+                continue;
+            }
+
+            $spacesFound = true;
+            break;
         }
 
         $this->assertTrue($spacesFound, 'Whitespace with spaces should be present and preserved');
@@ -371,7 +383,7 @@ class ServeCommandFileContentTest extends TestCase
     public function testNestedDirectoryFileAccess(): void
     {
         $nestedDir = $this->tempDir . '/src/Controller/Admin';
-        mkdir($nestedDir, 0777, true);
+        mkdir($nestedDir, 0o777, true);
 
         $nestedFile = $nestedDir . '/UserController.php';
         file_put_contents($nestedFile, "<?php\nnamespace App\\Controller\\Admin;\n");

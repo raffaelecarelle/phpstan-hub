@@ -2,65 +2,66 @@
 
 namespace PhpStanHub\Tests\Web;
 
+use Exception;
 use PhpStanHub\Web\StatusHandler;
 use PHPUnit\Framework\TestCase;
 use Ratchet\ConnectionInterface;
 
 class StatusHandlerTest extends TestCase
 {
-    private StatusHandler $handler;
+    private StatusHandler $statusHandler;
 
     protected function setUp(): void
     {
-        $this->handler = new StatusHandler();
+        $this->statusHandler = new StatusHandler();
     }
 
     public function testOnOpenAddsConnectionToClients(): void
     {
         $connection = $this->createMock(ConnectionInterface::class);
 
-        $this->handler->onOpen($connection);
+        $this->statusHandler->onOpen($connection);
 
         // Test broadcast works with the added connection
         $connection->expects($this->once())
             ->method('send')
             ->with('test message');
 
-        $this->handler->broadcast('test message');
+        $this->statusHandler->broadcast('test message');
     }
 
     public function testOnCloseRemovesConnection(): void
     {
         $connection = $this->createMock(ConnectionInterface::class);
 
-        $this->handler->onOpen($connection);
+        $this->statusHandler->onOpen($connection);
 
         // Connection should receive message
         $connection->expects($this->once())
             ->method('send')
             ->with('test message 1');
 
-        $this->handler->broadcast('test message 1');
+        $this->statusHandler->broadcast('test message 1');
 
         // Close connection
-        $this->handler->onClose($connection);
+        $this->statusHandler->onClose($connection);
 
         // Connection should not receive message after being closed
         $connection->expects($this->never())
             ->method('send');
 
-        $this->handler->broadcast('test message 2');
+        $this->statusHandler->broadcast('test message 2');
     }
 
     public function testOnErrorClosesConnection(): void
     {
         $connection = $this->createMock(ConnectionInterface::class);
-        $exception = new \Exception('Test error');
+        $exception = new Exception('Test error');
 
         $connection->expects($this->once())
             ->method('close');
 
-        $this->handler->onError($connection, $exception);
+        $this->statusHandler->onError($connection, $exception);
     }
 
     public function testBroadcastSendsToAllConnections(): void
@@ -69,9 +70,9 @@ class StatusHandlerTest extends TestCase
         $connection2 = $this->createMock(ConnectionInterface::class);
         $connection3 = $this->createMock(ConnectionInterface::class);
 
-        $this->handler->onOpen($connection1);
-        $this->handler->onOpen($connection2);
-        $this->handler->onOpen($connection3);
+        $this->statusHandler->onOpen($connection1);
+        $this->statusHandler->onOpen($connection2);
+        $this->statusHandler->onOpen($connection3);
 
         $message = 'broadcast test';
 
@@ -87,13 +88,13 @@ class StatusHandlerTest extends TestCase
             ->method('send')
             ->with($message);
 
-        $this->handler->broadcast($message);
+        $this->statusHandler->broadcast($message);
     }
 
     public function testBroadcastWithNoConnections(): void
     {
         // Should not throw exception
-        $this->handler->broadcast('test message');
+        $this->statusHandler->broadcast('test message');
 
         $this->assertTrue(true); // If we get here, test passed
     }
@@ -103,7 +104,7 @@ class StatusHandlerTest extends TestCase
         $connection = $this->createMock(ConnectionInterface::class);
 
         // Should not throw exception
-        $this->handler->onMessage($connection, 'test message');
+        $this->statusHandler->onMessage($connection, 'test message');
 
         $this->assertTrue(true); // If we get here, test passed
     }
@@ -113,8 +114,8 @@ class StatusHandlerTest extends TestCase
         $connection1 = $this->createMock(ConnectionInterface::class);
         $connection2 = $this->createMock(ConnectionInterface::class);
 
-        $this->handler->onOpen($connection1);
-        $this->handler->onOpen($connection2);
+        $this->statusHandler->onOpen($connection1);
+        $this->statusHandler->onOpen($connection2);
 
         // Both should receive first message
         $connection1->expects($this->once())
@@ -124,10 +125,10 @@ class StatusHandlerTest extends TestCase
             ->method('send')
             ->with('message 1');
 
-        $this->handler->broadcast('message 1');
+        $this->statusHandler->broadcast('message 1');
 
         // Remove connection1
-        $this->handler->onClose($connection1);
+        $this->statusHandler->onClose($connection1);
 
         // Create new mocks for second broadcast
         $connection2New = $this->createMock(ConnectionInterface::class);
@@ -136,57 +137,57 @@ class StatusHandlerTest extends TestCase
             ->with('message 2');
 
         // Re-add connection2 for the test
-        $this->handler->onClose($connection2);
-        $this->handler->onOpen($connection2New);
+        $this->statusHandler->onClose($connection2);
+        $this->statusHandler->onOpen($connection2New);
 
-        $this->handler->broadcast('message 2');
+        $this->statusHandler->broadcast('message 2');
     }
 
     public function testBroadcastWithJsonData(): void
     {
         $connection = $this->createMock(ConnectionInterface::class);
 
-        $this->handler->onOpen($connection);
+        $this->statusHandler->onOpen($connection);
 
         $jsonData = json_encode([
             'status' => 'running',
             'errors' => [],
-            'totals' => ['errors' => 0]
+            'totals' => ['errors' => 0],
         ]);
 
         $connection->expects($this->once())
             ->method('send')
             ->with($jsonData);
 
-        $this->handler->broadcast($jsonData);
+        $this->statusHandler->broadcast($jsonData);
     }
 
     public function testBroadcastWithEmptyString(): void
     {
         $connection = $this->createMock(ConnectionInterface::class);
 
-        $this->handler->onOpen($connection);
+        $this->statusHandler->onOpen($connection);
 
         $connection->expects($this->once())
             ->method('send')
             ->with('');
 
-        $this->handler->broadcast('');
+        $this->statusHandler->broadcast('');
     }
 
     public function testOnOpenWithMultipleCallsForSameConnection(): void
     {
         $connection = $this->createMock(ConnectionInterface::class);
 
-        $this->handler->onOpen($connection);
-        $this->handler->onOpen($connection); // Adding same connection twice
+        $this->statusHandler->onOpen($connection);
+        $this->statusHandler->onOpen($connection); // Adding same connection twice
 
         // SplObjectStorage doesn't allow duplicates, so connection should receive message only once
         $connection->expects($this->once())
             ->method('send')
             ->with('test');
 
-        $this->handler->broadcast('test');
+        $this->statusHandler->broadcast('test');
     }
 
     public function testOnCloseWithNonExistentConnection(): void
@@ -194,7 +195,7 @@ class StatusHandlerTest extends TestCase
         $connection = $this->createMock(ConnectionInterface::class);
 
         // Should not throw exception
-        $this->handler->onClose($connection);
+        $this->statusHandler->onClose($connection);
 
         $this->assertTrue(true);
     }
@@ -203,7 +204,7 @@ class StatusHandlerTest extends TestCase
     {
         $connection = $this->createMock(ConnectionInterface::class);
 
-        $this->handler->onOpen($connection);
+        $this->statusHandler->onOpen($connection);
 
         // Create large payload
         $largeData = str_repeat('test data ', 10000);
@@ -212,14 +213,14 @@ class StatusHandlerTest extends TestCase
             ->method('send')
             ->with($largeData);
 
-        $this->handler->broadcast($largeData);
+        $this->statusHandler->broadcast($largeData);
     }
 
     public function testMultipleBroadcastsInSequence(): void
     {
         $connection = $this->createMock(ConnectionInterface::class);
 
-        $this->handler->onOpen($connection);
+        $this->statusHandler->onOpen($connection);
 
         $messages = [];
         $connection->expects($this->exactly(3))
@@ -228,9 +229,9 @@ class StatusHandlerTest extends TestCase
                 $messages[] = $message;
             });
 
-        $this->handler->broadcast('message 1');
-        $this->handler->broadcast('message 2');
-        $this->handler->broadcast('message 3');
+        $this->statusHandler->broadcast('message 1');
+        $this->statusHandler->broadcast('message 2');
+        $this->statusHandler->broadcast('message 3');
 
         $this->assertSame(['message 1', 'message 2', 'message 3'], $messages);
     }
@@ -240,19 +241,19 @@ class StatusHandlerTest extends TestCase
         $connection = $this->createMock(ConnectionInterface::class);
 
         // Open connection
-        $this->handler->onOpen($connection);
+        $this->statusHandler->onOpen($connection);
 
         // Send message
         $connection->expects($this->once())
             ->method('send');
-        $this->handler->broadcast('test');
+        $this->statusHandler->broadcast('test');
 
         // Receive message (should do nothing)
-        $this->handler->onMessage($connection, 'client message');
+        $this->statusHandler->onMessage($connection, 'client message');
 
         // Error occurs
         $connection->expects($this->once())
             ->method('close');
-        $this->handler->onError($connection, new \Exception('test'));
+        $this->statusHandler->onError($connection, new Exception('test'));
     }
 }

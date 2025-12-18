@@ -24,22 +24,23 @@ class ViteManifestTest extends TestCase
                     unlink($file);
                 }
             }
+
             rmdir($this->tempDir);
         }
     }
 
     public function testGetScriptReturnsEmptyStringWhenManifestDoesNotExist(): void
     {
-        $manifest = new ViteManifest($this->tempDir . '/manifest.json');
+        $viteManifest = new ViteManifest($this->tempDir . '/manifest.json');
 
-        $this->assertSame('', $manifest->getScript());
+        $this->assertSame('', $viteManifest->getScript());
     }
 
     public function testGetStylesReturnsEmptyStringWhenManifestDoesNotExist(): void
     {
-        $manifest = new ViteManifest($this->tempDir . '/manifest.json');
+        $viteManifest = new ViteManifest($this->tempDir . '/manifest.json');
 
-        $this->assertSame('', $manifest->getStyles());
+        $this->assertSame('', $viteManifest->getStyles());
     }
 
     public function testGetScriptReturnsCorrectTag(): void
@@ -47,33 +48,33 @@ class ViteManifestTest extends TestCase
         $manifestData = [
             'assets/js/app.js' => [
                 'file' => 'assets/app-abc123.js',
-                'css' => []
-            ]
+                'css' => [],
+            ],
         ];
 
         $manifestPath = $this->tempDir . '/manifest.json';
         file_put_contents($manifestPath, json_encode($manifestData));
 
-        $manifest = new ViteManifest($manifestPath);
+        $viteManifest = new ViteManifest($manifestPath);
 
         $expected = '<script type="module" src="/build/assets/app-abc123.js"></script>';
-        $this->assertSame($expected, $manifest->getScript());
+        $this->assertSame($expected, $viteManifest->getScript());
     }
 
     public function testGetStylesReturnsEmptyStringWhenNoCssInManifest(): void
     {
         $manifestData = [
             'assets/js/app.js' => [
-                'file' => 'assets/app-abc123.js'
-            ]
+                'file' => 'assets/app-abc123.js',
+            ],
         ];
 
         $manifestPath = $this->tempDir . '/manifest.json';
         file_put_contents($manifestPath, json_encode($manifestData));
 
-        $manifest = new ViteManifest($manifestPath);
+        $viteManifest = new ViteManifest($manifestPath);
 
-        $this->assertSame('', $manifest->getStyles());
+        $this->assertSame('', $viteManifest->getStyles());
     }
 
     public function testGetStylesReturnsEmptyStringWhenCssArrayIsEmpty(): void
@@ -81,16 +82,16 @@ class ViteManifestTest extends TestCase
         $manifestData = [
             'assets/js/app.js' => [
                 'file' => 'assets/app-abc123.js',
-                'css' => []
-            ]
+                'css' => [],
+            ],
         ];
 
         $manifestPath = $this->tempDir . '/manifest.json';
         file_put_contents($manifestPath, json_encode($manifestData));
 
-        $manifest = new ViteManifest($manifestPath);
+        $viteManifest = new ViteManifest($manifestPath);
 
-        $this->assertSame('', $manifest->getStyles());
+        $this->assertSame('', $viteManifest->getStyles());
     }
 
     public function testGetStylesReturnsCorrectTagForSingleCss(): void
@@ -98,17 +99,17 @@ class ViteManifestTest extends TestCase
         $manifestData = [
             'assets/js/app.js' => [
                 'file' => 'assets/app-abc123.js',
-                'css' => ['assets/app-xyz789.css']
-            ]
+                'css' => ['assets/app-xyz789.css'],
+            ],
         ];
 
         $manifestPath = $this->tempDir . '/manifest.json';
         file_put_contents($manifestPath, json_encode($manifestData));
 
-        $manifest = new ViteManifest($manifestPath);
+        $viteManifest = new ViteManifest($manifestPath);
 
         $expected = '<link rel="stylesheet" href="/build/assets/app-xyz789.css">';
-        $this->assertSame($expected, $manifest->getStyles());
+        $this->assertSame($expected, $viteManifest->getStyles());
     }
 
     public function testGetStylesReturnsCorrectTagsForMultipleCss(): void
@@ -119,37 +120,37 @@ class ViteManifestTest extends TestCase
                 'css' => [
                     'assets/app-xyz789.css',
                     'assets/vendor-def456.css',
-                    'assets/theme-ghi012.css'
-                ]
-            ]
+                    'assets/theme-ghi012.css',
+                ],
+            ],
         ];
 
         $manifestPath = $this->tempDir . '/manifest.json';
         file_put_contents($manifestPath, json_encode($manifestData));
 
-        $manifest = new ViteManifest($manifestPath);
+        $viteManifest = new ViteManifest($manifestPath);
 
         $expected = '<link rel="stylesheet" href="/build/assets/app-xyz789.css">'
             . '<link rel="stylesheet" href="/build/assets/vendor-def456.css">'
             . '<link rel="stylesheet" href="/build/assets/theme-ghi012.css">';
 
-        $this->assertSame($expected, $manifest->getStyles());
+        $this->assertSame($expected, $viteManifest->getStyles());
     }
 
     public function testGetScriptReturnsEmptyStringWhenEntryNotFound(): void
     {
         $manifestData = [
             'assets/js/other.js' => [
-                'file' => 'assets/other-abc123.js'
-            ]
+                'file' => 'assets/other-abc123.js',
+            ],
         ];
 
         $manifestPath = $this->tempDir . '/manifest.json';
         file_put_contents($manifestPath, json_encode($manifestData));
 
-        $manifest = new ViteManifest($manifestPath);
+        $viteManifest = new ViteManifest($manifestPath);
 
-        $this->assertSame('', $manifest->getScript());
+        $this->assertSame('', $viteManifest->getScript());
     }
 
     public function testGetStylesReturnsEmptyStringWhenEntryNotFound(): void
@@ -157,16 +158,16 @@ class ViteManifestTest extends TestCase
         $manifestData = [
             'assets/js/other.js' => [
                 'file' => 'assets/other-abc123.js',
-                'css' => ['assets/other-xyz789.css']
-            ]
+                'css' => ['assets/other-xyz789.css'],
+            ],
         ];
 
         $manifestPath = $this->tempDir . '/manifest.json';
         file_put_contents($manifestPath, json_encode($manifestData));
 
-        $manifest = new ViteManifest($manifestPath);
+        $viteManifest = new ViteManifest($manifestPath);
 
-        $this->assertSame('', $manifest->getStyles());
+        $this->assertSame('', $viteManifest->getStyles());
     }
 
     public function testHandlesInvalidJson(): void
@@ -174,10 +175,10 @@ class ViteManifestTest extends TestCase
         $manifestPath = $this->tempDir . '/manifest.json';
         file_put_contents($manifestPath, 'invalid json{]');
 
-        $manifest = new ViteManifest($manifestPath);
+        $viteManifest = new ViteManifest($manifestPath);
 
-        $this->assertSame('', $manifest->getScript());
-        $this->assertSame('', $manifest->getStyles());
+        $this->assertSame('', $viteManifest->getScript());
+        $this->assertSame('', $viteManifest->getStyles());
     }
 
     public function testHandlesEmptyManifest(): void
@@ -185,27 +186,27 @@ class ViteManifestTest extends TestCase
         $manifestPath = $this->tempDir . '/manifest.json';
         file_put_contents($manifestPath, '{}');
 
-        $manifest = new ViteManifest($manifestPath);
+        $viteManifest = new ViteManifest($manifestPath);
 
-        $this->assertSame('', $manifest->getScript());
-        $this->assertSame('', $manifest->getStyles());
+        $this->assertSame('', $viteManifest->getScript());
+        $this->assertSame('', $viteManifest->getStyles());
     }
 
     public function testHandlesManifestWithMissingFileKey(): void
     {
         $manifestData = [
             'assets/js/app.js' => [
-                'css' => ['assets/app-xyz789.css']
-            ]
+                'css' => ['assets/app-xyz789.css'],
+            ],
         ];
 
         $manifestPath = $this->tempDir . '/manifest.json';
         file_put_contents($manifestPath, json_encode($manifestData));
 
-        $manifest = new ViteManifest($manifestPath);
+        $viteManifest = new ViteManifest($manifestPath);
 
         // Should handle gracefully when 'file' key is missing
-        $script = $manifest->getScript();
+        $script = $viteManifest->getScript();
         $this->assertIsString($script);
     }
 
@@ -214,17 +215,17 @@ class ViteManifestTest extends TestCase
         $manifestData = [
             'assets/js/app.js' => [
                 'file' => 'assets/app-abc123-!@#$%^&*().js',
-                'css' => []
-            ]
+                'css' => [],
+            ],
         ];
 
         $manifestPath = $this->tempDir . '/manifest.json';
         file_put_contents($manifestPath, json_encode($manifestData));
 
-        $manifest = new ViteManifest($manifestPath);
+        $viteManifest = new ViteManifest($manifestPath);
 
         $expected = '<script type="module" src="/build/assets/app-abc123-!@#$%^&*().js"></script>';
-        $this->assertSame($expected, $manifest->getScript());
+        $this->assertSame($expected, $viteManifest->getScript());
     }
 
     public function testGetStylesWithSpecialCharactersInPath(): void
@@ -232,42 +233,42 @@ class ViteManifestTest extends TestCase
         $manifestData = [
             'assets/js/app.js' => [
                 'file' => 'assets/app-abc123.js',
-                'css' => ['assets/app-xyz789-!@#.css']
-            ]
+                'css' => ['assets/app-xyz789-!@#.css'],
+            ],
         ];
 
         $manifestPath = $this->tempDir . '/manifest.json';
         file_put_contents($manifestPath, json_encode($manifestData));
 
-        $manifest = new ViteManifest($manifestPath);
+        $viteManifest = new ViteManifest($manifestPath);
 
         $expected = '<link rel="stylesheet" href="/build/assets/app-xyz789-!@#.css">';
-        $this->assertSame($expected, $manifest->getStyles());
+        $this->assertSame($expected, $viteManifest->getStyles());
     }
 
     public function testManifestPathIsFile(): void
     {
         $manifestData = [
             'assets/js/app.js' => [
-                'file' => 'assets/app-abc123.js'
-            ]
+                'file' => 'assets/app-abc123.js',
+            ],
         ];
 
         $manifestPath = $this->tempDir . '/manifest.json';
         file_put_contents($manifestPath, json_encode($manifestData));
 
-        $manifest = new ViteManifest($manifestPath);
+        $viteManifest = new ViteManifest($manifestPath);
 
-        $this->assertNotEmpty($manifest->getScript());
+        $this->assertNotEmpty($viteManifest->getScript());
     }
 
     public function testManifestPathIsDirectory(): void
     {
         // Pass directory path instead of file path
-        $manifest = new ViteManifest($this->tempDir);
+        $viteManifest = new ViteManifest($this->tempDir);
 
-        $this->assertSame('', $manifest->getScript());
-        $this->assertSame('', $manifest->getStyles());
+        $this->assertSame('', $viteManifest->getScript());
+        $this->assertSame('', $viteManifest->getStyles());
     }
 
     public function testGetScriptAndGetStylesCanBeCalledMultipleTimes(): void
@@ -275,26 +276,26 @@ class ViteManifestTest extends TestCase
         $manifestData = [
             'assets/js/app.js' => [
                 'file' => 'assets/app-abc123.js',
-                'css' => ['assets/app-xyz789.css']
-            ]
+                'css' => ['assets/app-xyz789.css'],
+            ],
         ];
 
         $manifestPath = $this->tempDir . '/manifest.json';
         file_put_contents($manifestPath, json_encode($manifestData));
 
-        $manifest = new ViteManifest($manifestPath);
+        $viteManifest = new ViteManifest($manifestPath);
 
         // Call multiple times to ensure idempotence
-        $script1 = $manifest->getScript();
-        $script2 = $manifest->getScript();
-        $script3 = $manifest->getScript();
+        $script1 = $viteManifest->getScript();
+        $script2 = $viteManifest->getScript();
+        $script3 = $viteManifest->getScript();
 
         $this->assertSame($script1, $script2);
         $this->assertSame($script2, $script3);
 
-        $styles1 = $manifest->getStyles();
-        $styles2 = $manifest->getStyles();
-        $styles3 = $manifest->getStyles();
+        $styles1 = $viteManifest->getStyles();
+        $styles2 = $viteManifest->getStyles();
+        $styles3 = $viteManifest->getStyles();
 
         $this->assertSame($styles1, $styles2);
         $this->assertSame($styles2, $styles3);
@@ -307,18 +308,18 @@ class ViteManifestTest extends TestCase
                 'file' => 'assets/app-12345.js',
                 'css' => [
                     'assets/app-67890.css',
-                    'assets/vendor-abcde.css'
-                ]
-            ]
+                    'assets/vendor-abcde.css',
+                ],
+            ],
         ];
 
         $manifestPath = $this->tempDir . '/manifest.json';
         file_put_contents($manifestPath, json_encode($manifestData));
 
-        $manifest = new ViteManifest($manifestPath);
+        $viteManifest = new ViteManifest($manifestPath);
 
-        $script = $manifest->getScript();
-        $styles = $manifest->getStyles();
+        $script = $viteManifest->getScript();
+        $styles = $viteManifest->getStyles();
 
         $this->assertStringContainsString('assets/app-12345.js', $script);
         $this->assertStringContainsString('type="module"', $script);

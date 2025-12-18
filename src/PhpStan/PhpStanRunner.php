@@ -3,15 +3,11 @@
 namespace PhpStanHub\PhpStan;
 
 use React\ChildProcess\Process;
-use function var_dump;
 
 class PhpStanRunner
 {
-    private string $cwd;
-
-    public function __construct(string $cwd)
+    public function __construct(private readonly string $cwd)
     {
-        $this->cwd = $cwd;
     }
 
     public function run(string $paths, int $level, bool $generateBaseline = false): Process
@@ -41,6 +37,7 @@ class PhpStanRunner
                 return $configFile;
             }
         }
+
         return null;
     }
 }

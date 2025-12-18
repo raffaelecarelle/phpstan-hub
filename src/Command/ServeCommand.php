@@ -2,6 +2,8 @@
 
 namespace PhpStanHub\Command;
 
+use Throwable;
+use Exception;
 use Nette\Neon\Neon;
 use PhpStanHub\PhpStan\PhpStanRunner;
 use PhpStanHub\Web\StatusHandler;
@@ -12,6 +14,7 @@ use Ratchet\Http\HttpServer as RatchetHttpServer;
 use Ratchet\Server\IoServer;
 use Ratchet\WebSocket\WsServer;
 use React\EventLoop\Loop;
+use React\EventLoop\LoopInterface;
 use React\Http\HttpServer;
 use React\Http\Message\Response;
 use React\Socket\SocketServer;
@@ -48,13 +51,13 @@ class ServeCommand extends Command
         $statusHandler = new StatusHandler();
         $viteManifest = new ViteManifest($projectRoot . '/public/build/.vite/manifest.json');
 
-        $http = new HttpServer(
+        $httpServer = new HttpServer(
             $loop,
-            function (ServerRequestInterface $request) use ($phpStanRunner, $statusHandler, $loop, $output, $viteManifest, $projectRoot) {
-                $path = $request->getUri()->getPath();
+            function (ServerRequestInterface $serverRequest) use ($phpStanRunner, $statusHandler, $loop, $output, $viteManifest, $projectRoot) {
+                $path = $serverRequest->getUri()->getPath();
 
                 if ($path === '/') {
-                    $isDev = isset($request->getQueryParams()['dev']);
+                    $isDev = isset($serverRequest->getQueryParams()['dev']);
                     return $this->createIndexResponse($isDev, $viteManifest);
                 }
 
@@ -72,9 +75,9 @@ class ServeCommand extends Command
                     return new Response(200, ['Content-Type' => 'application/json'], json_encode($config));
                 }
 
-                if ($path === '/api/run' && $request->getMethod() === 'POST') {
+                if ($path === '/api/run' && $serverRequest->getMethod() === 'POST') {
                     try {
-                        $body = (string)$request->getBody();
+                        $body = (string)$serverRequest->getBody();
                         $output->writeln('Received /api/run request with body: ' . $body);
 
                         $params = json_decode($body, true, 512, JSON_THROW_ON_ERROR);
@@ -88,16 +91,16 @@ class ServeCommand extends Command
                         $this->runAnalysis($phpStanRunner, $statusHandler, $loop, $pathsString, $level, $output, $generateBaseline);
 
                         return new Response(202, ['Content-Type' => 'application/json'], json_encode(['status' => 'running']));
-                    } catch (\Throwable $e) {
+                    } catch (Throwable $e) {
                         $errorMessage = sprintf("Error processing /api/run: %s\n%s", $e->getMessage(), $e->getTraceAsString());
                         $output->writeln(sprintf('<error>%s</error>', $errorMessage));
                         return new Response(500, ['Content-Type' => 'application/json'], json_encode(['error' => 'Internal Server Error', 'message' => $e->getMessage()]));
                     }
                 }
 
-                if ($path === '/api/ignore-error' && $request->getMethod() === 'POST') {
+                if ($path === '/api/ignore-error' && $serverRequest->getMethod() === 'POST') {
                     try {
-                        $body = (string)$request->getBody();
+                        $body = (string)$serverRequest->getBody();
                         $params = json_decode($body, true, 512, JSON_THROW_ON_ERROR);
                         $error = $params['error'] ?? null;
                         $file = $params['file'] ?? null;
@@ -108,14 +111,14 @@ class ServeCommand extends Command
                         }
 
                         return new Response(400, ['Content-Type' => 'application/json'], json_encode(['error' => 'Invalid request']));
-                    } catch (\Throwable $e) {
+                    } catch (Throwable $e) {
                         return new Response(500, ['Content-Type' => 'application/json'], json_encode(['error' => 'Internal Server Error', 'message' => $e->getMessage()]));
                     }
                 }
 
-                if ($path === '/api/file-content' && $request->getMethod() === 'POST') {
+                if ($path === '/api/file-content' && $serverRequest->getMethod() === 'POST') {
                     try {
-                        $body = (string)$request->getBody();
+                        $body = (string)$serverRequest->getBody();
                         $params = json_decode($body, true, 512, JSON_THROW_ON_ERROR);
                         $file = $params['file'] ?? null;
 
@@ -140,9 +143,9 @@ class ServeCommand extends Command
 
                         return new Response(200, ['Content-Type' => 'application/json'], json_encode([
                             'content' => $content,
-                            'tokens' => $tokens
+                            'tokens' => $tokens,
                         ]));
-                    } catch (\Throwable $e) {
+                    } catch (Throwable $e) {
                         return new Response(500, ['Content-Type' => 'application/json'], json_encode(['error' => 'Internal Server Error', 'message' => $e->getMessage()]));
                     }
                 }
@@ -159,7 +162,7 @@ class ServeCommand extends Command
             $fileWatcher = new FileWatcher($pathsToWatch);
             $configWatcher = new FileWatcher([$projectRoot], ['*.neon']);
 
-            $loop?->addPeriodicTimer(1, function () use ($fileWatcher, $configWatcher, $phpStanRunner, $statusHandler, $loop, $pathsToWatch, $levelToWatch, $output) {
+            $loop->addPeriodicTimer(1, function () use ($fileWatcher, $configWatcher, $phpStanRunner, $statusHandler, $loop, $pathsToWatch, $levelToWatch, $output) {
                 if ($fileWatcher->hasChanges() || $configWatcher->hasChanges()) {
                     $this->runAnalysis($phpStanRunner, $statusHandler, $loop, implode(' ', $pathsToWatch), $levelToWatch, $output);
                 }
@@ -167,7 +170,7 @@ class ServeCommand extends Command
         }
 
         $socket = new SocketServer('127.0.0.1:8081', [], $loop);
-        $http->listen($socket);
+        $httpServer->listen($socket);
 
         $wsServer = new WsServer($statusHandler);
         $wsSocket = new SocketServer('127.0.0.1:8082', [], $loop);
@@ -192,22 +195,25 @@ class ServeCommand extends Command
         }
 
         $html = <<<HTML
-        <!DOCTYPE html>
-        <html lang="en" class="bg-gray-100">
-        <head>
-            <meta charset="UTF-8">
-            <title>PhpStanHub</title>
-            $head
-        </head>
-        <body>
-            <div id="app"></div>
-        </body>
-        </html>
-        HTML;
+            <!DOCTYPE html>
+            <html lang="en" class="bg-gray-100">
+            <head>
+                <meta charset="UTF-8">
+                <title>PhpStanHub</title>
+                {$head}
+            </head>
+            <body>
+                <div id="app"></div>
+            </body>
+            </html>
+            HTML;
 
         return new Response(200, ['Content-Type' => 'text/html'], $html);
     }
 
+    /**
+     * @return array{level: int, paths: string[], availablePaths: string[], editorUrl: string, projectRoot: string, hostProjectRoot: ?string}
+     */
     private function getPhpStanConfig(string $projectRoot): array
     {
         $defaultPaths = $this->getDefaultPaths($projectRoot);
@@ -249,11 +255,14 @@ class ServeCommand extends Command
                 'projectRoot' => $projectRoot,
                 'hostProjectRoot' => $hostProjectRoot,
             ];
-        } catch (\Exception $e) {
+        } catch (Exception) {
             return $defaultConfig;
         }
     }
 
+    /**
+     * @return string[]
+     */
     private function getDefaultPaths(string $projectRoot): array
     {
         // Prima cerca di leggere da composer.json
@@ -267,34 +276,34 @@ class ServeCommand extends Command
 
                 // Estrai i path da autoload psr-4
                 if (isset($composerData['autoload']['psr-4'])) {
-                    foreach ($composerData['autoload']['psr-4'] as $namespace => $path) {
+                    foreach ($composerData['autoload']['psr-4'] as $path) {
                         if (is_array($path)) {
                             foreach ($path as $p) {
-                                $paths[] = rtrim($p, '/');
+                                $paths[] = rtrim((string) $p, '/');
                             }
                         } else {
-                            $paths[] = rtrim($path, '/');
+                            $paths[] = rtrim((string) $path, '/');
                         }
                     }
                 }
 
                 // Estrai i path da autoload-dev psr-4
                 if (isset($composerData['autoload-dev']['psr-4'])) {
-                    foreach ($composerData['autoload-dev']['psr-4'] as $namespace => $path) {
+                    foreach ($composerData['autoload-dev']['psr-4'] as $path) {
                         if (is_array($path)) {
                             foreach ($path as $p) {
-                                $paths[] = rtrim($p, '/');
+                                $paths[] = rtrim((string) $p, '/');
                             }
                         } else {
-                            $paths[] = rtrim($path, '/');
+                            $paths[] = rtrim((string) $path, '/');
                         }
                     }
                 }
 
-                if (!empty($paths)) {
+                if ($paths !== []) {
                     return array_values(array_unique($paths));
                 }
-            } catch (\Exception $e) {
+            } catch (Exception) {
                 // Ignora errori e usa il fallback
             }
         }
@@ -303,7 +312,7 @@ class ServeCommand extends Command
         return ['src'];
     }
 
-    private function runAnalysis(PhpStanRunner $phpStanRunner, StatusHandler $statusHandler, $loop, string $paths, int $level, OutputInterface $output, bool $generateBaseline = false): void
+    private function runAnalysis(PhpStanRunner $phpStanRunner, StatusHandler $statusHandler, LoopInterface $loop, string $paths, int $level, OutputInterface $output, bool $generateBaseline = false): void
     {
         // Broadcast "running" status
         $statusHandler->broadcast(json_encode(['status' => 'running']));
@@ -323,7 +332,7 @@ class ServeCommand extends Command
         });
 
         $process->on('exit', function ($exitCode) use (&$buffer, &$errorBuffer, $statusHandler, $output) {
-            if ($exitCode !== 0 && !empty($errorBuffer)) {
+            if ($exitCode !== 0 && ($errorBuffer !== '' && $errorBuffer !== '0')) {
                 $output->writeln(sprintf('<error>PHPStan exited with code %d:</error>', $exitCode));
                 $output->writeln(sprintf('<error>%s</error>', $errorBuffer));
 
@@ -335,6 +344,7 @@ class ServeCommand extends Command
                 if ($errorPayload !== false) {
                     $statusHandler->broadcast($errorPayload);
                 }
+
                 return;
             }
 
@@ -356,6 +366,7 @@ class ServeCommand extends Command
             if (file_exists($distPath)) {
                 $neonPath = $distPath;
             }
+
             // Se nessuno esiste, neonPath rimane phpstan.neon e verrà creato
         }
 
@@ -477,7 +488,7 @@ class ServeCommand extends Command
                             'text' => $lineText . ($i < count($lines) - 1 ? "\n" : ''),
                             'color' => $color,
                             'line' => $currentLine,
-                            'type' => token_name($tokenType)
+                            'type' => token_name($tokenType),
                         ];
                         if ($i < count($lines) - 1) {
                             $currentLine++;
@@ -488,7 +499,7 @@ class ServeCommand extends Command
                         'text' => $tokenText,
                         'color' => $color,
                         'line' => $currentLine,
-                        'type' => token_name($tokenType)
+                        'type' => token_name($tokenType),
                     ];
                 }
             } else {
@@ -497,7 +508,7 @@ class ServeCommand extends Command
                     'text' => $token,
                     'color' => '#f87171', // Punctuation in red
                     'line' => $currentLine,
-                    'type' => 'PUNCTUATION'
+                    'type' => 'PUNCTUATION',
                 ];
             }
         }

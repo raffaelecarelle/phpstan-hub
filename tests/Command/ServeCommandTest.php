@@ -2,16 +2,21 @@
 
 namespace PhpStanHub\Tests\Command;
 
+use ReflectionClass;
+use PhpStanHub\Web\ViteManifest;
 use PhpStanHub\Command\ServeCommand;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Console\Application;
-use Symfony\Component\Console\Tester\CommandTester;
 
 class ServeCommandTest extends TestCase
 {
+    public $originalCwd;
+
     private string $tempDir;
+
     private Application $application;
-    private ServeCommand $command;
+
+    private ServeCommand $serveCommand;
 
     protected function setUp(): void
     {
@@ -23,14 +28,14 @@ class ServeCommandTest extends TestCase
         chdir($this->tempDir);
 
         $this->application = new Application();
-        $this->command = new ServeCommand();
-        $this->application->add($this->command);
+        $this->serveCommand = new ServeCommand();
+        $this->application->add($this->serveCommand);
     }
 
     protected function tearDown(): void
     {
         // Restore original directory
-        if (isset($this->originalCwd)) {
+        if (property_exists($this, 'originalCwd') && $this->originalCwd !== null) {
             chdir($this->originalCwd);
         }
 
@@ -54,33 +59,33 @@ class ServeCommandTest extends TestCase
                 unlink($path);
             }
         }
+
         rmdir($dir);
     }
 
     public function testCommandIsConfigured(): void
     {
-        $this->assertSame('serve', $this->command->getName());
-        $this->assertSame('Starts the PhpStanHub server.', $this->command->getDescription());
+        $this->assertSame('serve', $this->serveCommand->getName());
+        $this->assertSame('Starts the PhpStanHub server.', $this->serveCommand->getDescription());
     }
 
     public function testCommandHasWatchOption(): void
     {
-        $definition = $this->command->getDefinition();
+        $inputDefinition = $this->serveCommand->getDefinition();
 
-        $this->assertTrue($definition->hasOption('watch'));
+        $this->assertTrue($inputDefinition->hasOption('watch'));
 
-        $option = $definition->getOption('watch');
-        $this->assertFalse($option->isValueRequired());
-        $this->assertSame('w', $option->getShortcut());
+        $inputOption = $inputDefinition->getOption('watch');
+        $this->assertFalse($inputOption->isValueRequired());
+        $this->assertSame('w', $inputOption->getShortcut());
     }
 
     public function testGetPhpStanConfigReturnsDefaultsWhenNoConfigFile(): void
     {
-        $reflection = new \ReflectionClass($this->command);
-        $method = $reflection->getMethod('getPhpStanConfig');
-        $method->setAccessible(true);
+        $reflectionClass = new ReflectionClass($this->serveCommand);
+        $reflectionMethod = $reflectionClass->getMethod('getPhpStanConfig');
 
-        $config = $method->invoke($this->command, $this->tempDir);
+        $config = $reflectionMethod->invoke($this->serveCommand, $this->tempDir);
 
         $this->assertIsArray($config);
         $this->assertArrayHasKey('level', $config);
@@ -96,21 +101,20 @@ class ServeCommandTest extends TestCase
     public function testGetPhpStanConfigReadsFromNeonFile(): void
     {
         $neonContent = <<<NEON
-parameters:
-    level: 8
-    paths:
-        - app
-        - lib
-    editorUrl: 'phpstorm://open?file=%%file%%&line=%%line%%'
-NEON;
+            parameters:
+                level: 8
+                paths:
+                    - app
+                    - lib
+                editorUrl: 'phpstorm://open?file=%%file%%&line=%%line%%'
+            NEON;
 
         file_put_contents($this->tempDir . '/phpstan.neon', $neonContent);
 
-        $reflection = new \ReflectionClass($this->command);
-        $method = $reflection->getMethod('getPhpStanConfig');
-        $method->setAccessible(true);
+        $reflectionClass = new ReflectionClass($this->serveCommand);
+        $reflectionMethod = $reflectionClass->getMethod('getPhpStanConfig');
 
-        $config = $method->invoke($this->command, $this->tempDir);
+        $config = $reflectionMethod->invoke($this->serveCommand, $this->tempDir);
 
         $this->assertSame(8, $config['level']);
         $this->assertSame(['app', 'lib'], $config['paths']);
@@ -122,11 +126,10 @@ NEON;
         file_put_contents($this->tempDir . '/phpstan.neon.dist', 'parameters: {level: 7}');
         file_put_contents($this->tempDir . '/phpstan.neon', 'parameters: {level: 3}');
 
-        $reflection = new \ReflectionClass($this->command);
-        $method = $reflection->getMethod('getPhpStanConfig');
-        $method->setAccessible(true);
+        $reflectionClass = new ReflectionClass($this->serveCommand);
+        $reflectionMethod = $reflectionClass->getMethod('getPhpStanConfig');
 
-        $config = $method->invoke($this->command, $this->tempDir);
+        $config = $reflectionMethod->invoke($this->serveCommand, $this->tempDir);
 
         $this->assertSame(7, $config['level']);
     }
@@ -135,11 +138,10 @@ NEON;
     {
         file_put_contents($this->tempDir . '/phpstan.neon.dist', 'parameters: {level: 6}');
 
-        $reflection = new \ReflectionClass($this->command);
-        $method = $reflection->getMethod('getPhpStanConfig');
-        $method->setAccessible(true);
+        $reflectionClass = new ReflectionClass($this->serveCommand);
+        $reflectionMethod = $reflectionClass->getMethod('getPhpStanConfig');
 
-        $config = $method->invoke($this->command, $this->tempDir);
+        $config = $reflectionMethod->invoke($this->serveCommand, $this->tempDir);
 
         $this->assertSame(6, $config['level']);
     }
@@ -148,11 +150,10 @@ NEON;
     {
         file_put_contents($this->tempDir . '/phpstan.neon', 'invalid neon content {][');
 
-        $reflection = new \ReflectionClass($this->command);
-        $method = $reflection->getMethod('getPhpStanConfig');
-        $method->setAccessible(true);
+        $reflectionClass = new ReflectionClass($this->serveCommand);
+        $reflectionMethod = $reflectionClass->getMethod('getPhpStanConfig');
 
-        $config = $method->invoke($this->command, $this->tempDir);
+        $config = $reflectionMethod->invoke($this->serveCommand, $this->tempDir);
 
         // Should return defaults on error
         $this->assertSame(5, $config['level']);
@@ -161,18 +162,17 @@ NEON;
     public function testGetPhpStanConfigReadsHostProjectRoot(): void
     {
         $neonContent = <<<NEON
-parameters:
-    phpstanHub:
-        hostProjectRoot: /host/path/to/project
-NEON;
+            parameters:
+                phpstanHub:
+                    hostProjectRoot: /host/path/to/project
+            NEON;
 
         file_put_contents($this->tempDir . '/phpstan.neon', $neonContent);
 
-        $reflection = new \ReflectionClass($this->command);
-        $method = $reflection->getMethod('getPhpStanConfig');
-        $method->setAccessible(true);
+        $reflectionClass = new ReflectionClass($this->serveCommand);
+        $reflectionMethod = $reflectionClass->getMethod('getPhpStanConfig');
 
-        $config = $method->invoke($this->command, $this->tempDir);
+        $config = $reflectionMethod->invoke($this->serveCommand, $this->tempDir);
 
         $this->assertSame('/host/path/to/project', $config['hostProjectRoot']);
     }
@@ -183,18 +183,17 @@ NEON;
             'autoload' => [
                 'psr-4' => [
                     'App\\' => 'app/',
-                    'Domain\\' => 'domain/'
-                ]
-            ]
+                    'Domain\\' => 'domain/',
+                ],
+            ],
         ];
 
         file_put_contents($this->tempDir . '/composer.json', json_encode($composerData));
 
-        $reflection = new \ReflectionClass($this->command);
-        $method = $reflection->getMethod('getDefaultPaths');
-        $method->setAccessible(true);
+        $reflectionClass = new ReflectionClass($this->serveCommand);
+        $reflectionMethod = $reflectionClass->getMethod('getDefaultPaths');
 
-        $paths = $method->invoke($this->command, $this->tempDir);
+        $paths = $reflectionMethod->invoke($this->serveCommand, $this->tempDir);
 
         $this->assertIsArray($paths);
         $this->assertContains('app', $paths);
@@ -206,23 +205,22 @@ NEON;
         $composerData = [
             'autoload' => [
                 'psr-4' => [
-                    'App\\' => 'app/'
-                ]
+                    'App\\' => 'app/',
+                ],
             ],
             'autoload-dev' => [
                 'psr-4' => [
-                    'Tests\\' => 'tests/'
-                ]
-            ]
+                    'Tests\\' => 'tests/',
+                ],
+            ],
         ];
 
         file_put_contents($this->tempDir . '/composer.json', json_encode($composerData));
 
-        $reflection = new \ReflectionClass($this->command);
-        $method = $reflection->getMethod('getDefaultPaths');
-        $method->setAccessible(true);
+        $reflectionClass = new ReflectionClass($this->serveCommand);
+        $reflectionMethod = $reflectionClass->getMethod('getDefaultPaths');
 
-        $paths = $method->invoke($this->command, $this->tempDir);
+        $paths = $reflectionMethod->invoke($this->serveCommand, $this->tempDir);
 
         $this->assertContains('app', $paths);
         $this->assertContains('tests', $paths);
@@ -233,18 +231,17 @@ NEON;
         $composerData = [
             'autoload' => [
                 'psr-4' => [
-                    'App\\' => ['app/', 'src/']
-                ]
-            ]
+                    'App\\' => ['app/', 'src/'],
+                ],
+            ],
         ];
 
         file_put_contents($this->tempDir . '/composer.json', json_encode($composerData));
 
-        $reflection = new \ReflectionClass($this->command);
-        $method = $reflection->getMethod('getDefaultPaths');
-        $method->setAccessible(true);
+        $reflectionClass = new ReflectionClass($this->serveCommand);
+        $reflectionMethod = $reflectionClass->getMethod('getDefaultPaths');
 
-        $paths = $method->invoke($this->command, $this->tempDir);
+        $paths = $reflectionMethod->invoke($this->serveCommand, $this->tempDir);
 
         $this->assertContains('app', $paths);
         $this->assertContains('src', $paths);
@@ -256,20 +253,19 @@ NEON;
             'autoload' => [
                 'psr-4' => [
                     'App\\' => 'src/',
-                    'Domain\\' => 'src/'
-                ]
-            ]
+                    'Domain\\' => 'src/',
+                ],
+            ],
         ];
 
         file_put_contents($this->tempDir . '/composer.json', json_encode($composerData));
 
-        $reflection = new \ReflectionClass($this->command);
-        $method = $reflection->getMethod('getDefaultPaths');
-        $method->setAccessible(true);
+        $reflectionClass = new ReflectionClass($this->serveCommand);
+        $reflectionMethod = $reflectionClass->getMethod('getDefaultPaths');
 
-        $paths = $method->invoke($this->command, $this->tempDir);
+        $paths = $reflectionMethod->invoke($this->serveCommand, $this->tempDir);
 
-        $this->assertSame(1, count(array_filter($paths, fn($p) => $p === 'src')));
+        $this->assertSame(1, count(array_filter($paths, fn ($p) => $p === 'src')));
     }
 
     public function testGetDefaultPathsTrimsTrailingSlashes(): void
@@ -277,18 +273,17 @@ NEON;
         $composerData = [
             'autoload' => [
                 'psr-4' => [
-                    'App\\' => 'app///'
-                ]
-            ]
+                    'App\\' => 'app///',
+                ],
+            ],
         ];
 
         file_put_contents($this->tempDir . '/composer.json', json_encode($composerData));
 
-        $reflection = new \ReflectionClass($this->command);
-        $method = $reflection->getMethod('getDefaultPaths');
-        $method->setAccessible(true);
+        $reflectionClass = new ReflectionClass($this->serveCommand);
+        $reflectionMethod = $reflectionClass->getMethod('getDefaultPaths');
 
-        $paths = $method->invoke($this->command, $this->tempDir);
+        $paths = $reflectionMethod->invoke($this->serveCommand, $this->tempDir);
 
         $this->assertContains('app', $paths);
         $this->assertNotContains('app/', $paths);
@@ -296,11 +291,10 @@ NEON;
 
     public function testGetDefaultPathsFallsBackToSrcWhenComposerJsonNotFound(): void
     {
-        $reflection = new \ReflectionClass($this->command);
-        $method = $reflection->getMethod('getDefaultPaths');
-        $method->setAccessible(true);
+        $reflectionClass = new ReflectionClass($this->serveCommand);
+        $reflectionMethod = $reflectionClass->getMethod('getDefaultPaths');
 
-        $paths = $method->invoke($this->command, $this->tempDir);
+        $paths = $reflectionMethod->invoke($this->serveCommand, $this->tempDir);
 
         $this->assertSame(['src'], $paths);
     }
@@ -309,26 +303,24 @@ NEON;
     {
         file_put_contents($this->tempDir . '/composer.json', 'invalid json {][');
 
-        $reflection = new \ReflectionClass($this->command);
-        $method = $reflection->getMethod('getDefaultPaths');
-        $method->setAccessible(true);
+        $reflectionClass = new ReflectionClass($this->serveCommand);
+        $reflectionMethod = $reflectionClass->getMethod('getDefaultPaths');
 
-        $paths = $method->invoke($this->command, $this->tempDir);
+        $paths = $reflectionMethod->invoke($this->serveCommand, $this->tempDir);
 
         $this->assertSame(['src'], $paths);
     }
 
     public function testCreateIndexResponseInDevMode(): void
     {
-        mkdir($this->tempDir . '/public/build/.vite', 0777, true);
+        mkdir($this->tempDir . '/public/build/.vite', 0o777, true);
 
-        $reflection = new \ReflectionClass($this->command);
-        $method = $reflection->getMethod('createIndexResponse');
-        $method->setAccessible(true);
+        $reflectionClass = new ReflectionClass($this->serveCommand);
+        $reflectionMethod = $reflectionClass->getMethod('createIndexResponse');
 
-        $viteManifestMock = $this->createMock(\PhpStanHub\Web\ViteManifest::class);
+        $viteManifestMock = $this->createMock(ViteManifest::class);
 
-        $response = $method->invoke($this->command, true, $viteManifestMock);
+        $response = $reflectionMethod->invoke($this->serveCommand, true, $viteManifestMock);
 
         $body = (string)$response->getBody();
 
@@ -340,17 +332,16 @@ NEON;
 
     public function testCreateIndexResponseInProductionMode(): void
     {
-        mkdir($this->tempDir . '/public/build/.vite', 0777, true);
+        mkdir($this->tempDir . '/public/build/.vite', 0o777, true);
 
-        $reflection = new \ReflectionClass($this->command);
-        $method = $reflection->getMethod('createIndexResponse');
-        $method->setAccessible(true);
+        $reflectionClass = new ReflectionClass($this->serveCommand);
+        $reflectionMethod = $reflectionClass->getMethod('createIndexResponse');
 
-        $viteManifestMock = $this->createMock(\PhpStanHub\Web\ViteManifest::class);
+        $viteManifestMock = $this->createMock(ViteManifest::class);
         $viteManifestMock->method('getStyles')->willReturn('<link rel="stylesheet" href="/build/app.css">');
         $viteManifestMock->method('getScript')->willReturn('<script src="/build/app.js"></script>');
 
-        $response = $method->invoke($this->command, false, $viteManifestMock);
+        $response = $reflectionMethod->invoke($this->serveCommand, false, $viteManifestMock);
 
         $body = (string)$response->getBody();
 
@@ -363,11 +354,10 @@ NEON;
     {
         file_put_contents($this->tempDir . '/phpstan.neon', 'parameters: {}');
 
-        $reflection = new \ReflectionClass($this->command);
-        $method = $reflection->getMethod('addErrorToPhpStanConfig');
-        $method->setAccessible(true);
+        $reflectionClass = new ReflectionClass($this->serveCommand);
+        $reflectionMethod = $reflectionClass->getMethod('addErrorToPhpStanConfig');
 
-        $method->invoke($this->command, $this->tempDir, 'Some error message', 'src/File.php');
+        $reflectionMethod->invoke($this->serveCommand, $this->tempDir, 'Some error message', 'src/File.php');
 
         $content = file_get_contents($this->tempDir . '/phpstan.neon');
 
@@ -378,11 +368,10 @@ NEON;
 
     public function testAddErrorToPhpStanConfigCreatesFileIfNotExists(): void
     {
-        $reflection = new \ReflectionClass($this->command);
-        $method = $reflection->getMethod('addErrorToPhpStanConfig');
-        $method->setAccessible(true);
+        $reflectionClass = new ReflectionClass($this->serveCommand);
+        $reflectionMethod = $reflectionClass->getMethod('addErrorToPhpStanConfig');
 
-        $method->invoke($this->command, $this->tempDir, 'Error message', 'src/File.php');
+        $reflectionMethod->invoke($this->serveCommand, $this->tempDir, 'Error message', 'src/File.php');
 
         $this->assertFileExists($this->tempDir . '/phpstan.neon');
     }
@@ -391,11 +380,10 @@ NEON;
     {
         file_put_contents($this->tempDir . '/phpstan.neon', 'parameters: {}');
 
-        $reflection = new \ReflectionClass($this->command);
-        $method = $reflection->getMethod('addErrorToPhpStanConfig');
-        $method->setAccessible(true);
+        $reflectionClass = new ReflectionClass($this->serveCommand);
+        $reflectionMethod = $reflectionClass->getMethod('addErrorToPhpStanConfig');
 
-        $method->invoke($this->command, $this->tempDir, 'Error with (parentheses)', 'src/File.php');
+        $reflectionMethod->invoke($this->serveCommand, $this->tempDir, 'Error with (parentheses)', 'src/File.php');
 
         $content = file_get_contents($this->tempDir . '/phpstan.neon');
 
@@ -406,20 +394,19 @@ NEON;
     public function testAddErrorToPhpStanConfigAppendsToExistingIgnores(): void
     {
         $neonContent = <<<NEON
-parameters:
-    ignoreErrors:
-        -
-            message: '#Existing error#'
-            path: src/Existing.php
-NEON;
+            parameters:
+                ignoreErrors:
+                    -
+                        message: '#Existing error#'
+                        path: src/Existing.php
+            NEON;
 
         file_put_contents($this->tempDir . '/phpstan.neon', $neonContent);
 
-        $reflection = new \ReflectionClass($this->command);
-        $method = $reflection->getMethod('addErrorToPhpStanConfig');
-        $method->setAccessible(true);
+        $reflectionClass = new ReflectionClass($this->serveCommand);
+        $reflectionMethod = $reflectionClass->getMethod('addErrorToPhpStanConfig');
 
-        $method->invoke($this->command, $this->tempDir, 'New error', 'src/New.php');
+        $reflectionMethod->invoke($this->serveCommand, $this->tempDir, 'New error', 'src/New.php');
 
         $content = file_get_contents($this->tempDir . '/phpstan.neon');
 
@@ -431,11 +418,10 @@ NEON;
     {
         file_put_contents($this->tempDir . '/phpstan.neon.dist', 'parameters: {}');
 
-        $reflection = new \ReflectionClass($this->command);
-        $method = $reflection->getMethod('addErrorToPhpStanConfig');
-        $method->setAccessible(true);
+        $reflectionClass = new ReflectionClass($this->serveCommand);
+        $reflectionMethod = $reflectionClass->getMethod('addErrorToPhpStanConfig');
 
-        $method->invoke($this->command, $this->tempDir, 'Error message', 'src/File.php');
+        $reflectionMethod->invoke($this->serveCommand, $this->tempDir, 'Error message', 'src/File.php');
 
         $this->assertFileExists($this->tempDir . '/phpstan.neon.dist');
 
@@ -449,11 +435,10 @@ NEON;
 
         file_put_contents($this->tempDir . '/phpstan.neon', $neonContent);
 
-        $reflection = new \ReflectionClass($this->command);
-        $method = $reflection->getMethod('getPhpStanConfig');
-        $method->setAccessible(true);
+        $reflectionClass = new ReflectionClass($this->serveCommand);
+        $reflectionMethod = $reflectionClass->getMethod('getPhpStanConfig');
 
-        $config = $method->invoke($this->command, $this->tempDir);
+        $config = $reflectionMethod->invoke($this->serveCommand, $this->tempDir);
 
         $this->assertIsArray($config['paths']);
         $this->assertSame(['src'], $config['paths']);
@@ -464,19 +449,18 @@ NEON;
         $composerData = [
             'autoload' => [
                 'psr-4' => [
-                    'App\\' => 'app/'
-                ]
-            ]
+                    'App\\' => 'app/',
+                ],
+            ],
         ];
 
         file_put_contents($this->tempDir . '/composer.json', json_encode($composerData));
         file_put_contents($this->tempDir . '/phpstan.neon', 'parameters: {paths: [custom]}');
 
-        $reflection = new \ReflectionClass($this->command);
-        $method = $reflection->getMethod('getPhpStanConfig');
-        $method->setAccessible(true);
+        $reflectionClass = new ReflectionClass($this->serveCommand);
+        $reflectionMethod = $reflectionClass->getMethod('getPhpStanConfig');
 
-        $config = $method->invoke($this->command, $this->tempDir);
+        $config = $reflectionMethod->invoke($this->serveCommand, $this->tempDir);
 
         $this->assertSame(['custom'], $config['paths']);
         $this->assertSame(['app'], $config['availablePaths']);
