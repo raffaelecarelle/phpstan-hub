@@ -182,9 +182,9 @@ class ServeCommand extends Command
             'hostProjectRoot' => null,
         ];
 
-        $neonPath = $projectRoot . '/phpstan.neon';
+        $neonPath = $projectRoot . '/phpstan.neon.dist';
         if (!file_exists($neonPath)) {
-            $neonPath = $projectRoot . '/phpstan.neon.dist';
+            $neonPath = $projectRoot . '/phpstan.neon';
         }
 
         if (!file_exists($neonPath)) {
