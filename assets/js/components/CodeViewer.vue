@@ -11,7 +11,7 @@ const props = defineProps({
     hostProjectRoot: String|null,
 });
 
-const emit = defineEmits(['error-ignored']);
+const emit = defineEmits(['error-ignored', 'checking-started', 'checking-finished']);
 
 const fileContent = ref(null);
 const tokens = ref([]);
@@ -376,6 +376,7 @@ const hasModifiedErrorLine = computed(() => {
 const saveAndCheckErrors = async () => {
     if (!props.filePath || checkingInProgress.value) return;
 
+    emit('checking-started');
     checkingInProgress.value = true;
 
     try {
@@ -432,6 +433,7 @@ const saveAndCheckErrors = async () => {
         alert(`Error: ${err.message}`);
     } finally {
         checkingInProgress.value = false;
+        emit('checking-finished');
     }
 };
 
@@ -459,131 +461,187 @@ watch(focusedLine, (newLine) => {
 <template>
     <div class="h-full bg-gray-900 flex">
         <div class="flex-1 overflow-y-auto" ref="containerRef" @scroll="handleScroll">
-        <!-- Empty State -->
-        <div v-if="!filePath" class="flex items-center justify-center h-full text-gray-500">
-            <div class="text-center">
-                <svg class="w-16 h-16 mx-auto mb-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-                <p class="text-lg">Select a file to view its content</p>
+            <!-- Empty State -->
+            <div v-if="!filePath" class="flex items-center justify-center h-full text-gray-500">
+                <div class="text-center">
+                    <svg class="w-16 h-16 mx-auto mb-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    <p class="text-lg">Select a file to view its content</p>
+                </div>
             </div>
-        </div>
 
-        <!-- Loading State -->
-        <div v-else-if="loading" class="flex items-center justify-center h-full">
-            <div class="flex items-center text-gray-400">
-                <svg class="animate-spin h-8 w-8 mr-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                <span class="text-lg">Loading file content...</span>
+            <!-- Loading State -->
+            <div v-else-if="loading" class="flex items-center justify-center h-full">
+                <div class="flex items-center text-gray-400">
+                    <svg class="animate-spin h-8 w-8 mr-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span class="text-lg">Loading file content...</span>
+                </div>
             </div>
-        </div>
 
-        <!-- Error State -->
-        <div v-else-if="error" class="flex items-center justify-center h-full">
-            <div class="text-center text-red-400">
-                <svg class="w-16 h-16 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <p class="text-lg font-semibold mb-2">Error loading file</p>
-                <p class="text-sm text-gray-500">{{ error }}</p>
+            <!-- Error State -->
+            <div v-else-if="error" class="flex items-center justify-center h-full">
+                <div class="text-center text-red-400">
+                    <svg class="w-16 h-16 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <p class="text-lg font-semibold mb-2">Error loading file</p>
+                    <p class="text-sm text-gray-500">{{ error }}</p>
+                </div>
             </div>
-        </div>
 
-        <!-- File Content -->
-        <div v-else class="p-4">
-            <!-- File Header -->
-            <div class="bg-gray-800 border border-gray-700 rounded-t-lg p-4 sticky top-0 z-10">
-                <div class="flex items-center justify-between">
-                    <div class="flex items-center">
-                        <svg class="w-5 h-5 mr-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                        </svg>
-                        <Copyable :text="getRelativePath(filePath)">
-                            <h3 class="text-lg font-semibold text-gray-200">{{ getRelativePath(filePath) }}</h3>
-                        </Copyable>
-                    </div>
-                    <div class="flex items-center gap-4">
-                        <span class="text-sm text-gray-500">{{ lines.length }} lines</span>
-                        <span class="text-sm text-gray-500">{{ errors?.length || 0 }} errors</span>
-                        <span v-if="useVirtualScroll" class="text-xs text-blue-400 bg-blue-900 bg-opacity-30 px-2 py-1 rounded">
+            <!-- File Content -->
+            <div v-else class="p-4">
+                <!-- File Header -->
+                <div class="bg-gray-800 border border-gray-700 rounded-t-lg p-4 sticky top-0 z-10">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center">
+                            <svg class="w-5 h-5 mr-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                            <Copyable :text="getRelativePath(filePath)">
+                                <h3 class="text-lg font-semibold text-gray-200">{{ getRelativePath(filePath) }}</h3>
+                            </Copyable>
+                        </div>
+                        <div class="flex items-center gap-4">
+                            <span class="text-sm text-gray-500">{{ lines.length }} lines</span>
+                            <span class="text-sm text-gray-500">{{ errors?.length || 0 }} errors</span>
+                            <span v-if="useVirtualScroll" class="text-xs text-blue-400 bg-blue-900 bg-opacity-30 px-2 py-1 rounded">
                             Virtual Scroll
                         </span>
 
-                        <!-- Edit Mode Toggle -->
-                        <button
-                            v-if="!isEditingMode"
-                            @click="toggleEditMode"
-                            class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded transition-colors flex items-center gap-2"
-                            title="Enable live editing"
-                        >
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                            </svg>
-                            Edit
-                        </button>
+                            <!-- Edit Mode Toggle -->
+                            <button
+                                v-if="!isEditingMode"
+                                @click="toggleEditMode"
+                                class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded transition-colors flex items-center gap-2"
+                                title="Enable live editing"
+                            >
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                </svg>
+                                Edit
+                            </button>
 
-                        <!-- Edit Mode Actions -->
-                        <div v-else class="flex items-center gap-2">
+                            <!-- Edit Mode Actions -->
+                            <div v-else class="flex items-center gap-2">
                             <span class="text-xs text-blue-400 bg-blue-900 bg-opacity-30 px-2 py-1 rounded">
                                 Edit Mode
                             </span>
-                            <span v-if="hasModifiedContent && !hasModifiedErrorLine" class="text-xs text-yellow-400 bg-yellow-900 bg-opacity-30 px-2 py-1 rounded">
+                                <span v-if="hasModifiedContent && !hasModifiedErrorLine" class="text-xs text-yellow-400 bg-yellow-900 bg-opacity-30 px-2 py-1 rounded">
                                 Modified
                             </span>
-                            <span v-if="hasModifiedErrorLine" class="text-xs text-orange-400 bg-orange-900 bg-opacity-30 px-2 py-1 rounded">
+                                <span v-if="hasModifiedErrorLine" class="text-xs text-orange-400 bg-orange-900 bg-opacity-30 px-2 py-1 rounded">
                                 Error line modified
                             </span>
-                            <button
-                                v-if="hasModifiedContent"
-                                @click="saveAndCheckErrors"
-                                :disabled="checkingInProgress"
-                                :class="[
+                                <button
+                                    v-if="hasModifiedContent"
+                                    @click="saveAndCheckErrors"
+                                    :disabled="checkingInProgress"
+                                    :class="[
                                     'px-4 py-2 text-white text-sm font-medium rounded transition-colors flex items-center gap-2',
                                     hasModifiedErrorLine
                                         ? 'bg-green-600 hover:bg-green-700'
                                         : 'bg-blue-600 hover:bg-blue-700',
                                     checkingInProgress ? 'bg-gray-600 cursor-not-allowed' : ''
                                 ]"
-                                :title="hasModifiedErrorLine ? 'Save and check if errors are fixed' : 'Save and re-run PHPStan'"
-                            >
-                                <svg v-if="!checkingInProgress" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                </svg>
-                                <svg v-else class="animate-spin w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                </svg>
-                                {{ checkingInProgress ? 'Checking...' : 'Check' }}
-                            </button>
-                            <button
-                                @click="cancelEdit"
-                                class="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white text-sm font-medium rounded transition-colors"
-                                title="Cancel editing"
-                            >
-                                Cancel
-                            </button>
+                                    :title="hasModifiedErrorLine ? 'Save and check if errors are fixed' : 'Save and re-run PHPStan'"
+                                >
+                                    <svg v-if="!checkingInProgress" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                    <svg v-else class="animate-spin w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                    {{ checkingInProgress ? 'Checking...' : 'Check' }}
+                                </button>
+                                <button
+                                    @click="cancelEdit"
+                                    class="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white text-sm font-medium rounded transition-colors"
+                                    title="Cancel editing"
+                                >
+                                    Cancel
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
 
-            <!-- Code Content -->
-            <div class="bg-gray-850 border border-gray-700 border-t-0 rounded-b-lg overflow-hidden">
-                <!-- Edit Mode: Editable Lines with Syntax Highlighting -->
-                <div v-if="isEditingMode" class="overflow-x-auto overflow-y-auto" style="max-height: 800px;">
-                    <div class="inline-block min-w-full">
-                        <template v-for="(line, index) in editedLines" :key="index">
-                            <!-- Error Line -->
-                            <div v-if="errorLines.has(index + 1)" class="bg-red-900 bg-opacity-20 border-l-4 border-red-500">
-                                <div class="flex">
-                                    <a
-                                        :href="getFileLink(index + 1)"
-                                        class="w-16 flex-shrink-0 text-right pr-4 py-2 text-red-400 font-semibold select-none border-r border-red-700 hover:underline"
-                                    >
+                <!-- Code Content -->
+                <div class="bg-gray-850 border border-gray-700 border-t-0 rounded-b-lg overflow-hidden">
+                    <!-- Edit Mode: Editable Lines with Syntax Highlighting -->
+                    <div v-if="isEditingMode" class="overflow-x-auto overflow-y-auto" style="max-height: 800px;">
+                        <div class="inline-block min-w-full">
+                            <template v-for="(line, index) in editedLines" :key="index">
+                                <!-- Error Line -->
+                                <div v-if="errorLines.has(index + 1)" class="bg-red-900 bg-opacity-20 border-l-4 border-red-500">
+                                    <div class="flex">
+                                        <a
+                                            :href="getFileLink(index + 1)"
+                                            class="w-16 flex-shrink-0 text-right pr-4 py-2 text-red-400 font-semibold select-none border-r border-red-700 hover:underline"
+                                        >
+                                            {{ index + 1 }}
+                                        </a>
+                                        <div class="flex-grow">
+                                            <!-- Show syntax highlighted code when not focused -->
+                                            <div
+                                                v-if="focusedLine !== index + 1"
+                                                @click="focusedLine = index + 1; $nextTick(() => $event.target.nextElementSibling?.focus())"
+                                                class="px-4 py-2 cursor-text font-mono text-sm leading-6"
+                                            >
+                                                <code class="whitespace-pre">
+                                                    <!-- Show edited content if line was modified, otherwise show tokens -->
+                                                    <template v-if="line !== lines[index]">
+                                                        <span class="text-gray-300">{{ line }}</span>
+                                                    </template>
+                                                    <template v-else-if="tokensByLine[index + 1]">
+                                                        <span v-for="(token, tokenIdx) in tokensByLine[index + 1]" :key="tokenIdx" :style="{ color: token.color }">{{ token.text }}</span>
+                                                    </template>
+                                                    <template v-else>{{ line }}</template>
+                                                </code>
+                                            </div>
+                                            <!-- Show input when focused -->
+                                            <input
+                                                v-else
+                                                type="text"
+                                                :value="line"
+                                                @input="handleLineEdit(index + 1, $event.target.value)"
+                                                @blur="focusedLine = null"
+                                                class="w-full bg-transparent text-gray-300 font-mono text-sm px-4 py-2 border-none focus:outline-none focus:bg-gray-800 focus:bg-opacity-30 focus:ring-2 focus:ring-yellow-500"
+                                                spellcheck="false"
+                                                style="min-width: 100%;"
+                                                ref="errorLineInput"
+                                            />
+                                        </div>
+                                    </div>
+                                    <!-- Error Messages -->
+                                    <div class="px-4 pb-2" v-if="errorsByLine[index + 1]">
+                                        <TransitionGroup name="fade" tag="div">
+                                            <div
+                                                v-for="(err, errIndex) in errorsByLine[index + 1]"
+                                                :key="`${err.line}-${err.message}`"
+                                                v-show="!isErrorFadingOut(err)"
+                                                class="mt-2"
+                                            >
+                                                <div class="p-3 bg-gray-800 border border-red-700 rounded">
+                                                    <Copyable :text="err.message">
+                                                        <p class="text-sm text-gray-300">{{ err.message }}</p>
+                                                    </Copyable>
+                                                </div>
+                                            </div>
+                                        </TransitionGroup>
+                                    </div>
+                                </div>
+
+                                <!-- Normal Line -->
+                                <div v-else class="flex hover:bg-gray-800 transition-colors">
+                                    <div class="w-16 flex-shrink-0 text-right pr-4 py-2 text-gray-600 select-none border-r border-gray-700">
                                         {{ index + 1 }}
-                                    </a>
+                                    </div>
                                     <div class="flex-grow">
                                         <!-- Show syntax highlighted code when not focused -->
                                         <div
@@ -609,162 +667,106 @@ watch(focusedLine, (newLine) => {
                                             :value="line"
                                             @input="handleLineEdit(index + 1, $event.target.value)"
                                             @blur="focusedLine = null"
-                                            class="w-full bg-transparent text-gray-300 font-mono text-sm px-4 py-2 border-none focus:outline-none focus:bg-gray-800 focus:bg-opacity-30 focus:ring-2 focus:ring-yellow-500"
+                                            class="w-full bg-transparent text-gray-300 font-mono text-sm px-4 py-2 border-none focus:outline-none focus:bg-gray-800 focus:bg-opacity-50 focus:ring-2 focus:ring-blue-500"
                                             spellcheck="false"
                                             style="min-width: 100%;"
-                                            ref="errorLineInput"
+                                            ref="normalLineInput"
                                         />
                                     </div>
                                 </div>
-                                <!-- Error Messages -->
-                                <div class="px-4 pb-2" v-if="errorsByLine[index + 1]">
-                                    <TransitionGroup name="fade" tag="div">
-                                        <div
-                                            v-for="(err, errIndex) in errorsByLine[index + 1]"
-                                            :key="`${err.line}-${err.message}`"
-                                            v-show="!isErrorFadingOut(err)"
-                                            class="mt-2"
-                                        >
-                                            <div class="p-3 bg-gray-800 border border-red-700 rounded">
-                                                <Copyable :text="err.message">
-                                                    <p class="text-sm text-gray-300">{{ err.message }}</p>
-                                                </Copyable>
-                                            </div>
-                                        </div>
-                                    </TransitionGroup>
-                                </div>
-                            </div>
-
-                            <!-- Normal Line -->
-                            <div v-else class="flex hover:bg-gray-800 transition-colors">
-                                <div class="w-16 flex-shrink-0 text-right pr-4 py-2 text-gray-600 select-none border-r border-gray-700">
-                                    {{ index + 1 }}
-                                </div>
-                                <div class="flex-grow">
-                                    <!-- Show syntax highlighted code when not focused -->
-                                    <div
-                                        v-if="focusedLine !== index + 1"
-                                        @click="focusedLine = index + 1; $nextTick(() => $event.target.nextElementSibling?.focus())"
-                                        class="px-4 py-2 cursor-text font-mono text-sm leading-6"
-                                    >
-                                        <code class="whitespace-pre">
-                                            <!-- Show edited content if line was modified, otherwise show tokens -->
-                                            <template v-if="line !== lines[index]">
-                                                <span class="text-gray-300">{{ line }}</span>
-                                            </template>
-                                            <template v-else-if="tokensByLine[index + 1]">
-                                                <span v-for="(token, tokenIdx) in tokensByLine[index + 1]" :key="tokenIdx" :style="{ color: token.color }">{{ token.text }}</span>
-                                            </template>
-                                            <template v-else>{{ line }}</template>
-                                        </code>
-                                    </div>
-                                    <!-- Show input when focused -->
-                                    <input
-                                        v-else
-                                        type="text"
-                                        :value="line"
-                                        @input="handleLineEdit(index + 1, $event.target.value)"
-                                        @blur="focusedLine = null"
-                                        class="w-full bg-transparent text-gray-300 font-mono text-sm px-4 py-2 border-none focus:outline-none focus:bg-gray-800 focus:bg-opacity-50 focus:ring-2 focus:ring-blue-500"
-                                        spellcheck="false"
-                                        style="min-width: 100%;"
-                                        ref="normalLineInput"
-                                    />
-                                </div>
-                            </div>
-                        </template>
+                            </template>
+                        </div>
                     </div>
-                </div>
 
-                <!-- View Mode: Syntax Highlighted with Sections -->
-                <div v-else class="font-mono text-sm" :style="{ height: totalHeight, position: 'relative' }">
-                    <div :style="{ transform: `translateY(${contentOffset}px)` }">
-                        <template v-for="(section, index) in visibleSections" :key="index">
-                        <!-- Collapsible Section -->
-                        <div v-if="section.type === 'collapsible'">
-                            <div
-                                v-if="isSectionCollapsed(section)"
-                                @click="toggleSection(section)"
-                                class="bg-gray-800 border-y border-gray-700 px-4 py-2 cursor-pointer hover:bg-gray-750 transition-colors flex items-center justify-center"
-                            >
-                                <svg class="w-4 h-4 mr-2 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                                </svg>
-                                <span class="text-gray-500 text-xs">
+                    <!-- View Mode: Syntax Highlighted with Sections -->
+                    <div v-else class="font-mono text-sm" :style="{ height: totalHeight, position: 'relative' }">
+                        <div :style="{ transform: `translateY(${contentOffset}px)` }">
+                            <template v-for="(section, index) in visibleSections" :key="index">
+                                <!-- Collapsible Section -->
+                                <div v-if="section.type === 'collapsible'">
+                                    <div
+                                        v-if="isSectionCollapsed(section)"
+                                        @click="toggleSection(section)"
+                                        class="bg-gray-800 border-y border-gray-700 px-4 py-2 cursor-pointer hover:bg-gray-750 transition-colors flex items-center justify-center"
+                                    >
+                                        <svg class="w-4 h-4 mr-2 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                                        </svg>
+                                        <span class="text-gray-500 text-xs">
                                     {{ section.lineCount }} lines hidden (lines {{ section.startLine }} - {{ section.endLine }})
                                 </span>
-                            </div>
-
-                            <div v-else>
-                                <div
-                                    @click="toggleSection(section)"
-                                    class="bg-gray-800 border-y border-gray-700 px-4 py-2 cursor-pointer hover:bg-gray-750 transition-colors flex items-center justify-center"
-                                >
-                                    <svg class="w-4 h-4 mr-2 text-gray-500 transform rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                                    </svg>
-                                    <span class="text-gray-500 text-xs">Collapse {{ section.lineCount }} lines</span>
-                                </div>
-
-                                <div v-for="lineNum in (section.endLine - section.startLine + 1)" :key="lineNum" class="py-1" :style="{ height: LINE_HEIGHT + 'px' }">
-                                    <div class="flex hover:bg-gray-800 transition-colors leading-tight">
-                                        <div class="w-16 flex-shrink-0 text-right pr-4 text-gray-600 select-none border-r border-gray-700">
-                                            {{ section.startLine + lineNum - 1 }}
-                                        </div>
-                                        <div class="flex-grow px-4 overflow-x-auto leading-tight">
-                                            <code class="whitespace-pre"><template v-if="tokensByLine[section.startLine + lineNum - 1]"><span v-for="(token, tokenIdx) in tokensByLine[section.startLine + lineNum - 1]" :key="tokenIdx" :style="{ color: token.color }">{{ token.text }}</span></template><template v-else>{{ lines[section.startLine + lineNum - 2] || '' }}</template></code>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Error Line Section -->
-                        <div v-else-if="section.type === 'error'" class="bg-red-900 bg-opacity-20 border-l-4 border-red-500">
-                            <div class="flex">
-                                <a
-                                    :href="getFileLink(section.line)"
-                                    class="py-2 w-16 flex-shrink-0 text-right pr-4 py-1 text-red-400 font-semibold select-none border-r border-red-700 hover:underline"
-                                >
-                                    {{ section.line }}
-                                </a>
-                                <div class="flex-grow">
-                                    <div class="px-4 py-2 overflow-x-auto leading-tight">
-                                        <code class="whitespace-pre"><template v-if="tokensByLine[section.line]"><span v-for="(token, tokenIdx) in tokensByLine[section.line]" :key="tokenIdx" :style="{ color: token.color }">{{ token.text }}</span></template><template v-else>{{ lines[section.line - 1] || '' }}</template></code>
                                     </div>
 
-                                    <!-- Error Messages -->
-                                    <div class="px-4 pb-2">
-                                        <TransitionGroup name="fade" tag="div">
-                                            <div
-                                                v-for="(err, errIndex) in errorsByLine[section.line]"
-                                                :key="`${err.line}-${err.message}`"
-                                                v-show="!isErrorFadingOut(err)"
-                                                class="mt-2 space-y-2"
-                                            >
-                                                <div class="p-3 bg-gray-800 border border-red-700 rounded">
-                                                    <Copyable :text="err.message">
-                                                        <p class="text-sm text-gray-300">{{ err.message }}</p>
-                                                    </Copyable>
+                                    <div v-else>
+                                        <div
+                                            @click="toggleSection(section)"
+                                            class="bg-gray-800 border-y border-gray-700 px-4 py-2 cursor-pointer hover:bg-gray-750 transition-colors flex items-center justify-center"
+                                        >
+                                            <svg class="w-4 h-4 mr-2 text-gray-500 transform rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                                            </svg>
+                                            <span class="text-gray-500 text-xs">Collapse {{ section.lineCount }} lines</span>
+                                        </div>
+
+                                        <div v-for="lineNum in (section.endLine - section.startLine + 1)" :key="lineNum" class="py-1" :style="{ height: LINE_HEIGHT + 'px' }">
+                                            <div class="flex hover:bg-gray-800 transition-colors leading-tight">
+                                                <div class="w-16 flex-shrink-0 text-right pr-4 text-gray-600 select-none border-r border-gray-700">
+                                                    {{ section.startLine + lineNum - 1 }}
                                                 </div>
-<!--                                                <QuickFixSuggestions-->
-<!--                                                    :error="err"-->
-<!--                                                    :file-path="filePath"-->
-<!--                                                    :project-root="projectRoot"-->
-<!--                                                    @ignore-error="handleIgnoreError"-->
-<!--                                                    @apply-fix="handleApplyFix"-->
-<!--                                                />-->
+                                                <div class="flex-grow px-4 overflow-x-auto leading-tight">
+                                                    <code class="whitespace-pre"><template v-if="tokensByLine[section.startLine + lineNum - 1]"><span v-for="(token, tokenIdx) in tokensByLine[section.startLine + lineNum - 1]" :key="tokenIdx" :style="{ color: token.color }">{{ token.text }}</span></template><template v-else>{{ lines[section.startLine + lineNum - 2] || '' }}</template></code>
+                                                </div>
                                             </div>
-                                        </TransitionGroup>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
+
+                                <!-- Error Line Section -->
+                                <div v-else-if="section.type === 'error'" class="bg-red-900 bg-opacity-20 border-l-4 border-red-500">
+                                    <div class="flex">
+                                        <a
+                                            :href="getFileLink(section.line)"
+                                            class="py-2 w-16 flex-shrink-0 text-right pr-4 py-1 text-red-400 font-semibold select-none border-r border-red-700 hover:underline"
+                                        >
+                                            {{ section.line }}
+                                        </a>
+                                        <div class="flex-grow">
+                                            <div class="px-4 py-2 overflow-x-auto leading-tight">
+                                                <code class="whitespace-pre"><template v-if="tokensByLine[section.line]"><span v-for="(token, tokenIdx) in tokensByLine[section.line]" :key="tokenIdx" :style="{ color: token.color }">{{ token.text }}</span></template><template v-else>{{ lines[section.line - 1] || '' }}</template></code>
+                                            </div>
+
+                                            <!-- Error Messages -->
+                                            <div class="px-4 pb-2">
+                                                <TransitionGroup name="fade" tag="div">
+                                                    <div
+                                                        v-for="(err, errIndex) in errorsByLine[section.line]"
+                                                        :key="`${err.line}-${err.message}`"
+                                                        v-show="!isErrorFadingOut(err)"
+                                                        class="mt-2 space-y-2"
+                                                    >
+                                                        <div class="p-3 bg-gray-800 border border-red-700 rounded">
+                                                            <Copyable :text="err.message">
+                                                                <p class="text-sm text-gray-300">{{ err.message }}</p>
+                                                            </Copyable>
+                                                        </div>
+                                                        <!--                                                <QuickFixSuggestions-->
+                                                        <!--                                                    :error="err"-->
+                                                        <!--                                                    :file-path="filePath"-->
+                                                        <!--                                                    :project-root="projectRoot"-->
+                                                        <!--                                                    @ignore-error="handleIgnoreError"-->
+                                                        <!--                                                    @apply-fix="handleApplyFix"-->
+                                                        <!--                                                />-->
+                                                    </div>
+                                                </TransitionGroup>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </template>
                         </div>
-                        </template>
                     </div>
                 </div>
             </div>
-        </div>
         </div>
     </div>
 </template>

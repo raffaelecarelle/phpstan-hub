@@ -14,7 +14,7 @@ const props = defineProps({
     hostProjectRoot: String|null,
 });
 
-const emit = defineEmits(['error-ignored']);
+const emit = defineEmits(['error-ignored', 'checking-started', 'checking-finished']);
 
 const selectedFile = ref(null);
 const sidebarWidth = ref(300); // Default sidebar width in pixels
@@ -49,6 +49,14 @@ const toggleSidebarMode = (mode) => {
 
 const handleErrorIgnored = (data) => {
     emit('error-ignored', data);
+};
+
+const handleCheckingStarted = () => {
+    emit('checking-started');
+};
+
+const handleCheckingFinished = () => {
+    emit('checking-finished');
 };
 
 // Resizable sidebar functionality
@@ -242,6 +250,8 @@ useKeyboardShortcuts(shortcuts);
                     :project-root="projectRoot"
                     :host-project-root="hostProjectRoot"
                     @error-ignored="handleErrorIgnored"
+                    @checking-started="handleCheckingStarted"
+                    @checking-finished="handleCheckingFinished"
                 />
             </div>
         </template>

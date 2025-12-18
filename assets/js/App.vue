@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted, computed, nextTick } from 'vue';
 import ControlPanel from './components/ControlPanel.vue';
 import ResultsList from './components/ResultsList.vue';
 import ExplorerView from './components/ExplorerView.vue';
@@ -16,6 +16,7 @@ const config = ref({
     projectRoot: '',
     hostProjectRoot: null,
 });
+const isLiveChecking = ref(false); // To prevent global loader during live edit
 
 const errorCount = computed(() => {
     if (!results.value || !results.value.files) {
@@ -33,19 +34,25 @@ const connectWebSocket = () => {
 
             // Check if this is a status update (checking started)
             if (data.status === 'running' || data.status === 'checking') {
-                status.value = 'running';
+                // Only show global loader if not in live-checking mode
+                if (!isLiveChecking.value) {
+                    status.value = 'running';
+                }
                 return;
             }
 
             // Otherwise, it's analysis results
             results.value = data;
+
+            // Wait for the DOM to update before setting status to idle
+            if (status.value === 'running') {
+                nextTick(() => {
+                    status.value = 'idle';
+                });
+            }
         } catch (e) {
             console.error('Failed to parse WebSocket data:', e);
-        } finally {
-            // Only set to idle if we received actual results
-            if (status.value === 'running') {
-                status.value = 'idle';
-            }
+            status.value = 'idle'; // Ensure we don't get stuck in a running state on error
         }
     };
     socket.onclose = () => {
@@ -113,6 +120,14 @@ const handleErrorIgnored = (data) => {
     };
 };
 
+const handleCheckingStarted = () => {
+    isLiveChecking.value = true;
+};
+
+const handleCheckingFinished = () => {
+    isLiveChecking.value = false;
+};
+
 onMounted(() => {
     fetchConfig();
     connectWebSocket();
@@ -129,7 +144,7 @@ onMounted(() => {
 
             <div class="absolute left-1/2 transform -translate-x-1/2">
                 <div
-                     :class="[
+                    :class="[
                          'w-24 h-12 flex items-center justify-center rounded-lg text-white font-bold text-2xl',
                          errorCount > 0 ? 'bg-red-500' : 'bg-green-500'
                      ]"
@@ -148,7 +163,7 @@ onMounted(() => {
                 <ControlPanel
                     @run-analysis="runAnalysis"
                     @view-changed="handleViewChange"
-                    :is-running="status === 'running'"
+                    :is-running="status === 'running' && !isLiveChecking"
                     :config="config"
                 />
             </div>
@@ -173,6 +188,8 @@ onMounted(() => {
                 :project-root="config.projectRoot"
                 :host-project-root="config.hostProjectRoot"
                 @error-ignored="handleErrorIgnored"
+                @checking-started="handleCheckingStarted"
+                @checking-finished="handleCheckingFinished"
             />
         </div>
     </div>
