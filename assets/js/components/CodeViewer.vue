@@ -11,6 +11,7 @@ const props = defineProps({
 });
 
 const fileContent = ref(null);
+const tokens = ref([]);
 const loading = ref(false);
 const error = ref(null);
 const collapsedSections = ref({});
@@ -42,9 +43,11 @@ watch(() => props.filePath, async (newPath) => {
 
         const data = await response.json();
         fileContent.value = data.content;
+        tokens.value = data.tokens || [];
     } catch (err) {
         error.value = err.message;
         fileContent.value = null;
+        tokens.value = [];
     } finally {
         loading.value = false;
     }
@@ -53,6 +56,21 @@ watch(() => props.filePath, async (newPath) => {
 const lines = computed(() => {
     if (!fileContent.value) return [];
     return fileContent.value.split('\n');
+});
+
+// Group tokens by line for syntax highlighting
+const tokensByLine = computed(() => {
+    if (!tokens.value.length) return {};
+
+    const grouped = {};
+    tokens.value.forEach(token => {
+        if (!grouped[token.line]) {
+            grouped[token.line] = [];
+        }
+        grouped[token.line].push(token);
+    });
+
+    return grouped;
 });
 
 const errorLines = computed(() => {
@@ -155,12 +173,15 @@ const getFileLink = (line) => {
         .replace('%%line%%', line);
 };
 
-const getIdentifierBackgroundColor = (identifier) => {
-    if (!identifier) return {};
-    const r = Math.floor(Math.random() * 150);
-    const g = Math.floor(Math.random() * 150);
-    const b = Math.floor(Math.random() * 150);
-    return { backgroundColor: `rgb(${r}, ${g}, ${b})` };
+// Render a line with syntax highlighting
+const renderLineWithTokens = (lineNum) => {
+    const lineTokens = tokensByLine.value[lineNum];
+    if (!lineTokens || lineTokens.length === 0) {
+        // Fallback to plain text
+        return lines.value[lineNum - 1] || '';
+    }
+
+    return lineTokens;
 };
 </script>
 
@@ -245,13 +266,13 @@ const getIdentifierBackgroundColor = (identifier) => {
                                     <span class="text-gray-500 text-xs">Collapse {{ section.lineCount }} lines</span>
                                 </div>
 
-                                <div v-for="lineNum in (section.endLine - section.startLine + 1)" :key="lineNum">
-                                    <div class="flex hover:bg-gray-800 transition-colors">
-                                        <div class="w-16 flex-shrink-0 text-right pr-4 py-1 text-gray-600 select-none border-r border-gray-700">
+                                <div v-for="lineNum in (section.endLine - section.startLine + 1)" :key="lineNum" class="py-1">
+                                    <div class="flex hover:bg-gray-800 transition-colors leading-tight">
+                                        <div class="w-16 flex-shrink-0 text-right pr-4 text-gray-600 select-none border-r border-gray-700">
                                             {{ section.startLine + lineNum - 1 }}
                                         </div>
-                                        <div class="flex-grow px-4 py-1 text-gray-300 overflow-x-auto">
-                                            <pre class="whitespace-pre">{{ lines[section.startLine + lineNum - 2] || '' }}</pre>
+                                        <div class="flex-grow px-4 overflow-x-auto leading-tight">
+                                            <code class="whitespace-pre"><template v-if="tokensByLine[section.startLine + lineNum - 1]"><span v-for="(token, tokenIdx) in tokensByLine[section.startLine + lineNum - 1]" :key="tokenIdx" :style="{ color: token.color }">{{ token.text }}</span></template><template v-else>{{ lines[section.startLine + lineNum - 2] || '' }}</template></code>
                                         </div>
                                     </div>
                                 </div>
@@ -268,8 +289,8 @@ const getIdentifierBackgroundColor = (identifier) => {
                                     {{ section.line }}
                                 </a>
                                 <div class="flex-grow">
-                                    <div class="px-4 py-1 text-gray-200 overflow-x-auto">
-                                        <pre class="whitespace-pre">{{ lines[section.line - 1] || '' }}</pre>
+                                    <div class="px-4 overflow-x-auto leading-tight">
+                                        <code class="whitespace-pre"><template v-if="tokensByLine[section.line]"><span v-for="(token, tokenIdx) in tokensByLine[section.line]" :key="tokenIdx" :style="{ color: token.color }">{{ token.text }}</span></template><template v-else>{{ lines[section.line - 1] || '' }}</template></code>
                                     </div>
 
                                     <!-- Error Messages -->
@@ -280,25 +301,8 @@ const getIdentifierBackgroundColor = (identifier) => {
                                             class="mt-2 p-3 bg-gray-800 border border-red-700 rounded"
                                         >
                                             <Copyable :text="err.message">
-                                                <p class="text-sm text-gray-300 mb-2">{{ err.message }}</p>
+                                                <p class="text-sm text-gray-300">{{ err.message }}</p>
                                             </Copyable>
-                                            <div v-if="err.tip" class="mt-2 pl-4 border-l-2 border-blue-600">
-                                                <p class="text-xs text-blue-400">
-                                                    💡 Tip: <a :href="err.tip" target="_blank" rel="noopener noreferrer" class="underline">{{ err.tip }}</a>
-                                                </p>
-                                            </div>
-                                            <div v-if="err.identifier" class="mt-2">
-                                                <a
-                                                    :href="`https://phpstan.org/error-identifiers/${err.identifier}`"
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    class="inline-block text-gray-300 text-xs font-mono px-2 py-1 rounded-full hover:opacity-80 transition-opacity"
-                                                    title="View on phpstan.org"
-                                                    :style="getIdentifierBackgroundColor(err.identifier)"
-                                                >
-                                                    {{ err.identifier }}
-                                                </a>
-                                            </div>
                                         </div>
                                     </div>
                                 </div>
