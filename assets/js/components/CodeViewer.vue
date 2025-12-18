@@ -479,4 +479,28 @@ const isErrorFadingOut = (error) => {
     opacity: 0;
     transform: translateX(10px);
 }
+
+/* Custom horizontal scrollbar */
+.overflow-x-auto::-webkit-scrollbar {
+    height: 6px;
+}
+
+.overflow-x-auto::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.overflow-x-auto::-webkit-scrollbar-thumb {
+    background: rgb(75, 85, 99);
+    border-radius: 3px;
+}
+
+.overflow-x-auto::-webkit-scrollbar-thumb:hover {
+    background: rgb(107, 114, 128);
+}
+
+/* Firefox scrollbar */
+.overflow-x-auto {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(75, 85, 99, 0.6) transparent;
+}
 </style>
