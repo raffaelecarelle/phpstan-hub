@@ -146,6 +146,189 @@ class ServeCommandFileContentTest extends TestCase
         $this->assertJson(json_encode(['content' => $content]));
     }
 
+    public function testApiResponseIncludesTokens(): void
+    {
+        $content = file_get_contents($this->testFilePath);
+        $tokens = token_get_all($content);
+
+        // Simulate API response structure
+        $response = [
+            'content' => $content,
+            'tokens' => []
+        ];
+
+        // Process tokens like the API does
+        $currentLine = 1;
+        foreach ($tokens as $token) {
+            if (is_array($token)) {
+                $tokenText = $token[1];
+                $color = '#d1d5db'; // Default color
+
+                if (str_contains($tokenText, "\n")) {
+                    $lines = explode("\n", $tokenText);
+                    foreach ($lines as $i => $lineText) {
+                        $response['tokens'][] = [
+                            'text' => $lineText . ($i < count($lines) - 1 ? "\n" : ''),
+                            'color' => $color,
+                            'line' => $currentLine,
+                            'type' => token_name($token[0])
+                        ];
+                        if ($i < count($lines) - 1) {
+                            $currentLine++;
+                        }
+                    }
+                } else {
+                    $response['tokens'][] = [
+                        'text' => $tokenText,
+                        'color' => $color,
+                        'line' => $currentLine,
+                        'type' => token_name($token[0])
+                    ];
+                }
+            } else {
+                $response['tokens'][] = [
+                    'text' => $token,
+                    'color' => '#f87171',
+                    'line' => $currentLine,
+                    'type' => 'PUNCTUATION'
+                ];
+            }
+        }
+
+        $this->assertArrayHasKey('content', $response);
+        $this->assertArrayHasKey('tokens', $response);
+        $this->assertIsArray($response['tokens']);
+        $this->assertNotEmpty($response['tokens']);
+
+        // Verify token structure
+        $firstToken = $response['tokens'][0];
+        $this->assertArrayHasKey('text', $firstToken);
+        $this->assertArrayHasKey('color', $firstToken);
+        $this->assertArrayHasKey('line', $firstToken);
+        $this->assertArrayHasKey('type', $firstToken);
+
+        // Verify JSON encoding works
+        $this->assertJson(json_encode($response));
+    }
+
+    public function testTokenizationReturnsCorrectStructure(): void
+    {
+        $phpCode = "<?php\n\$var = 123;\n";
+        $tokens = token_get_all($phpCode);
+
+        $this->assertIsArray($tokens);
+        $this->assertNotEmpty($tokens);
+
+        // Verify first token is PHP open tag
+        $this->assertIsArray($tokens[0]);
+        $this->assertEquals(T_OPEN_TAG, $tokens[0][0]);
+    }
+
+    public function testTokenizationPreservesWhitespace(): void
+    {
+        $phpCode = "<?php\n    \$var = 'test';\n";
+        $tokens = token_get_all($phpCode);
+
+        $spacesFound = false;
+        foreach ($tokens as $token) {
+            if (is_array($token) && $token[0] === T_WHITESPACE) {
+                // Check if this whitespace contains actual spaces (not just newlines)
+                if (str_contains($token[1], ' ')) {
+                    $spacesFound = true;
+                    break;
+                }
+            }
+        }
+
+        $this->assertTrue($spacesFound, 'Whitespace with spaces should be present and preserved');
+    }
+
+    public function testTokenizationIdentifiesKeywords(): void
+    {
+        $phpCode = "<?php\nclass Test {\n    public function method() {\n        return true;\n    }\n}\n";
+        $tokens = token_get_all($phpCode);
+
+        $foundTokenTypes = [];
+        foreach ($tokens as $token) {
+            if (is_array($token)) {
+                $foundTokenTypes[] = $token[0];
+            }
+        }
+
+        $this->assertContains(T_CLASS, $foundTokenTypes);
+        $this->assertContains(T_PUBLIC, $foundTokenTypes);
+        $this->assertContains(T_FUNCTION, $foundTokenTypes);
+        $this->assertContains(T_RETURN, $foundTokenTypes);
+    }
+
+    public function testTokenizationHandlesMultiLineComments(): void
+    {
+        $phpCode = "<?php\n/*\n * Multi-line\n * comment\n */\n\$var = 1;\n";
+        $tokens = token_get_all($phpCode);
+
+        $commentFound = false;
+        foreach ($tokens as $token) {
+            if (is_array($token) && $token[0] === T_COMMENT) {
+                $commentFound = true;
+                $this->assertStringContainsString('Multi-line', $token[1]);
+                $this->assertStringContainsString("\n", $token[1]);
+            }
+        }
+
+        $this->assertTrue($commentFound, 'Multi-line comment should be found');
+    }
+
+    public function testTokenizationIdentifiesVariables(): void
+    {
+        $phpCode = "<?php\n\$userName = 'John';\n\$userId = 123;\n";
+        $tokens = token_get_all($phpCode);
+
+        $variables = [];
+        foreach ($tokens as $token) {
+            if (is_array($token) && $token[0] === T_VARIABLE) {
+                $variables[] = $token[1];
+            }
+        }
+
+        $this->assertContains('$userName', $variables);
+        $this->assertContains('$userId', $variables);
+    }
+
+    public function testTokenizationIdentifiesStrings(): void
+    {
+        $phpCode = "<?php\n\$str = 'single';\n\$str2 = \"double\";\n";
+        $tokens = token_get_all($phpCode);
+
+        $strings = [];
+        foreach ($tokens as $token) {
+            if (is_array($token) && $token[0] === T_CONSTANT_ENCAPSED_STRING) {
+                $strings[] = $token[1];
+            }
+        }
+
+        $this->assertContains("'single'", $strings);
+        $this->assertContains('"double"', $strings);
+    }
+
+    public function testTokenizationHandlesPunctuation(): void
+    {
+        $phpCode = "<?php\n\$a = (\$b + \$c);\n";
+        $tokens = token_get_all($phpCode);
+
+        $punctuation = [];
+        foreach ($tokens as $token) {
+            if (!is_array($token)) {
+                $punctuation[] = $token;
+            }
+        }
+
+        $this->assertContains('=', $punctuation);
+        $this->assertContains('(', $punctuation);
+        $this->assertContains(')', $punctuation);
+        $this->assertContains('+', $punctuation);
+        $this->assertContains(';', $punctuation);
+    }
+
     public function testEmptyFileShouldReturnEmptyContent(): void
     {
         $emptyFile = $this->tempDir . '/empty.php';

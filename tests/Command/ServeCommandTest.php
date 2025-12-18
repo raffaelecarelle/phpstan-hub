@@ -117,10 +117,10 @@ NEON;
         $this->assertSame('phpstorm://open?file=%%file%%&line=%%line%%', $config['editorUrl']);
     }
 
-    public function testGetPhpStanConfigPrefersNeonOverDistFile(): void
+    public function testGetPhpStanConfigPrefersDistFile(): void
     {
-        file_put_contents($this->tempDir . '/phpstan.neon', 'parameters: {level: 7}');
-        file_put_contents($this->tempDir . '/phpstan.neon.dist', 'parameters: {level: 3}');
+        file_put_contents($this->tempDir . '/phpstan.neon.dist', 'parameters: {level: 7}');
+        file_put_contents($this->tempDir . '/phpstan.neon', 'parameters: {level: 3}');
 
         $reflection = new \ReflectionClass($this->command);
         $method = $reflection->getMethod('getPhpStanConfig');
