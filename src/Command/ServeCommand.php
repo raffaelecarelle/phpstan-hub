@@ -27,7 +27,7 @@ use Symfony\Component\Console\Output\OutputInterface;
 #[AsCommand(name: 'serve', description: 'Starts the PhpStanHub server.')]
 class ServeCommand extends Command
 {
-    protected static $defaultName = 'serve';
+    protected static string $defaultName = 'serve';
 
     private const MIME_TYPES = [
         'js' => 'application/javascript',
