@@ -51,7 +51,7 @@ class ServeCommand extends Command
         $projectRoot = getcwd();
         $phpStanRunner = new PhpStanRunner($projectRoot);
         $statusHandler = new StatusHandler();
-        $viteManifest = new ViteManifest($projectRoot . '/public/build/.vite/manifest.json');
+        $viteManifest = new ViteManifest(__DIR__ . '/../../public/build/.vite/manifest.json');
 
         $httpServer = new HttpServer(
             $loop,
