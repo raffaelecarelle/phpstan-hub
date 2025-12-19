@@ -2,6 +2,7 @@
 
 namespace PhpStanHub\Command;
 
+use Symfony\Component\Console\Attribute\AsCommand;
 use Throwable;
 use Exception;
 use Nette\Neon\Neon;
@@ -23,6 +24,7 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 
+#[AsCommand(name: 'serve', description: 'Starts the PhpStanHub server.')]
 class ServeCommand extends Command
 {
     protected static $defaultName = 'serve';
@@ -43,7 +45,7 @@ class ServeCommand extends Command
             ->addOption('watch', 'w', InputOption::VALUE_NONE, 'Watch files for changes');
     }
 
-    protected function execute(InputInterface $input, OutputInterface $output)
+    protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $loop = Loop::get();
         $projectRoot = getcwd();
