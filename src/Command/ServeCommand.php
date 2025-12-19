@@ -240,7 +240,7 @@ class ServeCommand extends Command
         $ioServer = new IoServer(new RatchetHttpServer($wsServer), $wsSocket, $loop);
 
         $output->writeln('Server running at http://127.0.0.1:8081');
-        $output->writeln('WebSocket server running at ws://12-7.0.0.1:8082');
+        $output->writeln('WebSocket server running at ws://127.0.0.1:8082');
         $output->writeln('Run `npm run dev` for frontend development.');
 
         $ioServer->run();
