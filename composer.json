@@ -17,7 +17,6 @@
         "react/filesystem": "^0.1.1",
         "react/child-process": "^0.6.1",
         "react/event-loop": "^1.3",
-        "phpunit/php-file-iterator": "^5.1",
         "symfony/finder": "^6.4|^7.4",
         "nette/neon": "^3.3",
         "phpstan/phpstan": "^2.0"
