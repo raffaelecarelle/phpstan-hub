@@ -42,6 +42,17 @@ see [screenshots](screenshots)
 - **Baseline Generation**: Generate PHPStan baseline files from the interface
 - **Docker Support**: Fully containerized environment with Docker Compose
 
+## Screenshots
+
+| Tree View (Explorer) | Grouped View | Individual View |
+|---|---|---|
+| ![Tree View](screenshots/tree_view.png) | ![Grouped View](screenshots/grouped_view.png) | ![Individual View](screenshots/invdividual_view.png) |
+
+| Live Editing | No Errors | Settings |
+|---|---|---|
+| ![Live Editing](screenshots/tree_view_live_edit.png) | ![No Errors](screenshots/no_errors.png) | ![Settings](screenshots/settings.png) |
+
+
 ## Architecture
 
 ### Backend (PHP)
