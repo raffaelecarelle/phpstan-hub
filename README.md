@@ -4,6 +4,8 @@ PhpStanHub is a modern, real-time web interface for running and analyzing PHPSta
 
 The application is powered by a PHP backend using the high-performance [ReactPHP](https://reactphp.org/) event-loop with WebSocket support via [Ratchet](http://socketo.me/), and a frontend built on [Vue.js 3](https://vuejs.org/) and [Tailwind CSS](https://tailwindcss.com/).
 
+see [screenshots](screenshots)
+
 ## Features
 
 - **Real-Time Analysis**: Run PHPStan directly from the browser with live results via WebSocket
